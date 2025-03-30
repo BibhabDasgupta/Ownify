@@ -6,8 +6,20 @@ const userSchema = new mongoose.Schema({
   name: { type: String },
   phone: { type: String },
   did: { type: String },
-  registeredDevices: [{ deviceId: String, registeredAt: Date }],
-  messages: [{ type: String }],
+  registeredDevices: [
+    {
+      deviceName: { type: String, required: true },
+      deviceId: { type: String, required: true },
+      registeredAt: { type: Date, default: Date.now },
+    },
+  ],
+  messages: [
+    {
+      content: { type: String, required: true },
+      timestamp: { type: Date, default: Date.now },
+      read: { type: Boolean, default: false },
+    },
+  ],
 });
 
 const User = mongoose.model("User", userSchema);

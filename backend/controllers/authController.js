@@ -110,10 +110,12 @@ export const updateProfile = async (req, res) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "secret");
     const { name, email, phone, did } = req.body;
+    const normalizedDid = did ? did.toLowerCase() : undefined;
+    console.log(normalizedDid);
 
     const user = await User.findByIdAndUpdate(
       decoded.id,
-      { name, email, phone, did },
+      { name, email, phone, did:normalizedDid },
       { new: true, runValidators: true }
     );
 

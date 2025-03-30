@@ -42,16 +42,16 @@ export default function LandingHero() {
           </div>
         </div>
         
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 animate-fade-in-up animate-delay-200">
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 animate-fade-in-up">
           Welcome to <span className="text-primary">ownify</span>
         </h1>
         
-        <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-10 animate-fade-in-up animate-delay-300">
+        <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-10 animate-fade-in-up">
           The next generation platform for verifying, registering, and managing device ownership 
           with blockchain-secured proof that's immutable and transparent.
         </p>
         
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-fade-in-up animate-delay-400">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-fade-in-up">
           <Button 
             size="lg" 
             className="gap-2 px-8 rounded-full font-medium"
@@ -88,14 +88,14 @@ export default function LandingHero() {
       <Dialog open={isInstructionsOpen} onOpenChange={setIsInstructionsOpen}>
         <DialogContent className="max-w-3xl">
           <DialogTitle className="sr-only">Ownify Instructions</DialogTitle>
-          <Button 
+           <Button 
             variant="ghost" 
             size="icon" 
             className="absolute right-4 top-4" 
             onClick={() => setIsInstructionsOpen(false)}
           >
             <X className="h-4 w-4" />
-          </Button>
+           </Button>  
           
           <div className="bg-black rounded-md p-8 max-h-[80vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">Ownify Instructions</h2>
@@ -130,7 +130,7 @@ export default function LandingHero() {
               <p>
                 All data stored on the blockchain is securely hashed, and signature validity is 
                 verified using cryptographic methods. Once a device is registered, re-registration 
-                attempts are automatically detected and denied.
+                attempts are automatically detected, denied and the legitimate holder is informed.
               </p>
               
               <div className="border-t border-gray-200 mt-4 pt-4">

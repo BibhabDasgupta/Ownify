@@ -103,7 +103,9 @@ export default function Login() {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
+      console.log(profileResponse);
       const { name, phone, did } = profileResponse.data;
+      localStorage.setItem("user-did", did);
 
       // Check if all required fields are present and non-empty
       const isProfileComplete = name && phone && did && values.email;
@@ -233,7 +235,7 @@ export default function Login() {
       return;
     }
   
-    const handleMessage = (event) => {
+    const handleMessage = async (event) => {
       if (event.origin !== "http://localhost:8080") return;
   
       console.log("Received message from popup:", event.data);
@@ -247,29 +249,76 @@ export default function Login() {
       window.removeEventListener("message", handleMessage);
       setIsLoading(false);
   
-      if (event.data.type === "google-auth-complete") {
-        const redirectPath = event.data.redirect || "/profile";
-        console.log("Redirecting to:", redirectPath);
-        toast({
-          title: "Google login successful",
-          description: redirectPath === "/dashboard" ? "Welcome back!" : "Please complete your profile.",
+    //   if (event.data.type === "google-auth-complete") {
+    //     const redirectPath = event.data.redirect || "/profile";
+    //     console.log("Redirecting to:", redirectPath);
+    //     toast({
+    //       title: "Google login successful",
+    //       description: redirectPath === "/dashboard" ? "Welcome back!" : "Please complete your profile.",
+    //     });
+    //     navigate(redirectPath, { replace: true });
+    //   } else if (event.data.type === "google-auth-failed") {
+    //     toast({
+    //       variant: "destructive",
+    //       title: "Google login failed",
+    //       description: event.data.message || "Authentication was not completed.",
+    //     });
+    //   } else {
+    //     console.error("Unexpected Google auth message:", event.data);
+    //     toast({
+    //       variant: "destructive",
+    //       title: "Unknown Error",
+    //       description: "Unexpected response from authentication process.",
+    //     });
+    //   }
+    // };
+    if (event.data.type === "google-auth-complete") {
+      try {
+        const token = localStorage.getItem("user-token");
+        if (!token) throw new Error("No authentication token found");
+
+        // Fetch user data
+        const response = await axios.get("http://localhost:5000/api/auth/me", {
+          headers: { Authorization: `Bearer ${token}` }
         });
-        navigate(redirectPath, { replace: true });
-      } else if (event.data.type === "google-auth-failed") {
+
+        const { did, name, email, phone } = response.data;
+
+        // Update localStorage
+        if (did) localStorage.setItem("user-did", did.toLowerCase());
+        if (email) localStorage.setItem("user-email", email);
+
+        // Determine profile completion
+        const isProfileComplete = name && email && phone && did;
+        localStorage.setItem("profile-completed", isProfileComplete ? "true" : "false");
+
+        // Redirect based on completion status
+        navigate(isProfileComplete ? "/dashboard" : "/profile", { replace: true });
+
+        toast({
+          title: "Login successful",
+          description: isProfileComplete 
+            ? "Welcome back!" 
+            : "Please complete your profile",
+        });
+
+      } catch (error) {
+        console.error("Login error:", error);
         toast({
           variant: "destructive",
-          title: "Google login failed",
-          description: event.data.message || "Authentication was not completed.",
+          title: "Login Error",
+          description: "Could not verify your account. Please try again.",
         });
-      } else {
-        console.error("Unexpected Google auth message:", event.data);
-        toast({
-          variant: "destructive",
-          title: "Unknown Error",
-          description: "Unexpected response from authentication process.",
-        });
+        navigate("/login");
       }
-    };
+    } else if (event.data.type === "google-auth-failed") {
+      toast({
+        variant: "destructive",
+        title: "Login failed",
+        description: event.data.message || "Authentication failed",
+      });
+    }
+  };
   
     window.addEventListener("message", handleMessage);
   };

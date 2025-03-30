@@ -131,7 +131,7 @@ export default function Header() {
               )}
             </>
           )}
-          <ThemeToggle />
+          {/* <ThemeToggle /> */}
           {!isLandingPage && !isLoggedIn && (
             <Button asChild>
               <Link to="/login">Login</Link>

@@ -170,16 +170,25 @@ export default function Profile() {
     const token = localStorage.getItem("user-token");
     try {
       // Send profile data to backend
+
+
+      const profileData = {
+        ...data,
+        did: data.did.toLowerCase() // Ensure DID is lowercase
+      };
+
+
       await axios.put(
         "http://localhost:5000/api/auth/update-profile",
-        data,
+        profileData,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      localStorage.setItem("user-profile", JSON.stringify(data));
+      localStorage.setItem("user-profile", JSON.stringify(profileData));
+      localStorage.setItem("user-did", profileData.did);
       localStorage.setItem("profile-completed", "true");
-      if (data.email) localStorage.setItem("user-email", data.email);// Store email for future use
+      if (data.email) localStorage.setItem("user-email", profileData.email);// Store email for future use
       setProfileCompleted(true);
       setIsEditing(false);
 
@@ -330,10 +339,10 @@ export default function Profile() {
                                 {...field}
                                 readOnly={!isEditing && profileCompleted}
                                 className={!isEditing && profileCompleted ? "bg-muted/50" : ""}
-                                placeholder="Enter your DID"
+                                placeholder="Enter your DID (Case Insensitive)"
                                 required
                               />
-                            </FormControl>
+                            </FormControl> 
                             <FormMessage />
                           </FormItem>
                         )}
