@@ -369,6 +369,14 @@ export default function Dashboard() {
         await contract.getRegistration(hashedDeviceId);
 
       if (existingHashedDID !== ethers.ZeroHash) {
+        if (registeredBy.toLowerCase() === metaMaskAddress.toLowerCase()) {
+          toast({
+            title: "Device Already Registered",
+            description: "You have already registered this device previously.",
+            variant: "default",
+          });
+          return;
+        }
         // Device is pre-registered; send registeredBy address to backend
         const originalUserDid = `${registeredBy}`; // Assuming DID format matches
 
@@ -598,11 +606,11 @@ export default function Dashboard() {
       const [hashedDID, userSignature, systemSignature, registeredBy] =
         await contract.getRegistration(hashedDeviceId);
 
-      console.log("Verification - verifyDeviceId:", verifyDeviceId);
-      console.log("Verification - hashedDeviceId:", hashedDeviceId);
-      console.log("Verification - verifyUserDid:", verifyUserDid);
-      console.log("Verification - providedHashedDID:", providedHashedDID);
-      console.log("Verification - hashedDID (from blockchain):", hashedDID);
+      // console.log("Verification - verifyDeviceId:", verifyDeviceId);
+      // console.log("Verification - hashedDeviceId:", hashedDeviceId);
+      // console.log("Verification - verifyUserDid:", verifyUserDid);
+      // console.log("Verification - providedHashedDID:", providedHashedDID);
+      // console.log("Verification - hashedDID (from blockchain):", hashedDID);
 
       console.log(registeredBy);
       // Check if device exists
