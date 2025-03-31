@@ -3,15 +3,9 @@ import PDFDocument from "pdfkit";
 import { ethers } from "ethers";
 import nodemailer from "nodemailer";
 import Web3 from "web3";
-//import DeviceRegistryABI from "../../blockchain/truffle_abis/DeviceRegistry.json";
 
-
-//const web3 = new Web3("http://127.0.0.1:7545");
-//const contractAddress = "0x9cF9853010f9e221c19D8A8540ccaaBF3Db08aAe";
-//const contract = new web3.eth.Contract(DeviceRegistryABI.abi, contractAddress);
 const systemWallet = new ethers.Wallet(process.env.SYSTEM_PRIVATE_KEY);
 const systemPublicKey = process.env.SYSTEM_PUBLIC_KEY;
-
 
 const transporter = nodemailer.createTransport({
   service: "gmail", // Update with your service
@@ -21,12 +15,12 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const sendNotificationEmail = async (toEmail, originalUserDid, newUserDetails) => {
+const sendNotificationEmail = async (toEmail, deviceId, originalUserDid, newUserDetails) => {
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: toEmail,
     subject: "Attempt to Re-Register Your Device",
-    text: `Someone attempted to re-register your device.\n\nOriginal DID: ${originalUserDid}\nNew Registrant Details:\n- DID: ${newUserDetails.did}\n- Name: ${newUserDetails.name || "Unknown"}\n- Phone: ${newUserDetails.phone || "N/A"}\n- Email: ${newUserDetails.email || "Unknown"}`,
+    text: `Someone attempted to re-register your device  (ID: ${deviceId}).\nNew Registrant Details:\n- DID: ${newUserDetails.did}\n- Name: ${newUserDetails.name || "Unknown"}\n- Phone: ${newUserDetails.phone || "N/A"}\n- Email: ${newUserDetails.email || "Unknown"}`,
   };
   await transporter.sendMail(mailOptions);
 };
@@ -55,7 +49,7 @@ export const checkAndNotify = async (req, res) => {
     }
 
     // Prepare notification message
-    const messageContent = `Someone attempted to re-register your device (ID: ${deviceId}). Details of the registrant:\n- DID: ${newUser.did}\n- Name: ${newUser.name || "Unknown"}\n- Phone: ${newUser.phone || "N/A"}\n- Email: ${newUser.email || "Unknown"}`;
+    const messageContent = `Someone attempted to re-register your device (ID: ${deviceId}).\n Details of the registrant:\n- DID: ${newUser.did}\n- Name: ${newUser.name || "Unknown"}\n- Phone: ${newUser.phone || "N/A"}\n- Email: ${newUser.email || "Unknown"}`;
 
     // Save message to original user's database
     originalUser.messages.push({ content: messageContent });
@@ -63,13 +57,13 @@ export const checkAndNotify = async (req, res) => {
    // console.log("Hello1");
 
     // Send email to original user
-    await sendNotificationEmail(originalUser.email, originalUserDid, {
+    await sendNotificationEmail(originalUser.email, deviceId, originalUserDid, {
       did: newUser.did,
       name: newUser.name,
       phone: newUser.phone,
       email: newUser.email,
     });
-    console.log("Hello2");
+    //console.log("Hello2");
     res.status(200).json({ message: "Original user notified successfully" });
   } catch (error) {
     console.error("Check and notify error:", error.message);
@@ -119,11 +113,6 @@ export const registerDevice = async (req, res) => {
     const systemSignature = await systemWallet.signMessage(ethers.getBytes(messageHash));
 
 
-    // const tx = await contract.methods
-    //   .registerDevice(hashedDeviceId, hashedDID, userSignature, systemSignature)
-    //   .send({ from: userDid, gas: 300000 });
-
-
     const newDevice = {
       deviceName,
       deviceId,
@@ -159,6 +148,54 @@ export const getDevices = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const getDeviceStats = async (req,res) => {
+  // const userDid = req.params.userDid || req.query.did || req.user?.did;
+  // console.log(userDid);
+  try {
+
+    const {userDid} = req.params;
+    
+    if (!userDid) {
+      return res.status(400).json({ error: "No DID provided" });
+    }
+
+    console.log(`Fetching stats for DID: ${userDid}`); // Debug log
+
+    const user = await User.findOne({ did: userDid })
+      .select('registeredDevices')
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const registeredDevices = user.registeredDevices || [];
+    const totalDevices = registeredDevices.length;
+
+    // Get the most recent device registration date
+    let lastRegisteredDate = null;
+    if (totalDevices > 0) {
+      // Sort devices by registration date (newest first) and get the first one
+      const sortedDevices = [...registeredDevices].sort(
+        (a, b) => new Date(b.registeredAt).getTime() - new Date(a.registeredAt).getTime()
+      );
+      lastRegisteredDate = sortedDevices[0].registeredAt;
+    }
+
+    res.status(200).json({
+      totalDevices,
+      lastRegisteredDate: lastRegisteredDate?.toISOString() || null
+    });
+
+  } catch (error) {
+    console.error("Error fetching device stats:", error);
+    res.status(500).json({ 
+      error: error instanceof Error ? error.message : "Server error" 
+    });
+  }
+};
+
 
 export const downloadDevicePDF = async (req, res) => {
   const userDid = req.query.userDid || req.user.did;

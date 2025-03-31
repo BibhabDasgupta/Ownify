@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Profile from "./pages/Profile";
 import Activity from "./pages/Activity";
 import NotFound from "./pages/NotFound";
+import ResetPassword from "./pages/ResetPassword";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import axios from "axios";
@@ -157,6 +158,7 @@ const App = () => (
           <Route path="/profile" element={<ProfileRoute element={<Profile />} />} />
           <Route path="/activity" element={<ProtectedRoute element={<Activity />} />} />
           <Route path="/auth/google/callback" element={<GoogleCallback />} /> {/* New route */}
+          <Route path="/reset-password" element={<ResetPassword />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

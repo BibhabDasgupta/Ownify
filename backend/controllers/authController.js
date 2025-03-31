@@ -4,6 +4,8 @@ import User from "../models/User.js";
 import { z } from "zod";
 import  {OAuth2Client} from "google-auth-library";
 import { ethers } from "ethers";
+import crypto from "crypto";
+import nodemailer from "nodemailer";
 
 if (!process.env.GOOGLE_CLIENT_ID) {
   throw new Error("GOOGLE_CLIENT_ID is not defined in environment variables");
@@ -25,6 +27,24 @@ const profileSchema = z.object({
   email: z.string().email(),
   phone: z.string().min(10),
   did: z.string().min(1),
+});
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
+
+// Add these new schemas
+const forgotPasswordSchema = z.object({
+  email: z.string().email()
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string(),
+  newPassword: z.string().min(8)
 });
 
 export const signup = async (req, res) => {
@@ -261,5 +281,73 @@ export const metamaskAuth = async (req, res) => {
   } catch (error) {
     console.error("MetaMask auth error:", error);
     res.status(400).json({ message: "MetaMask authentication failed", error: error.message });
+  }
+};
+
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = forgotPasswordSchema.parse(req.body);
+    console.log(email);
+    const user = await User.findOne({ email });
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Generate reset token (expires in 1 hour)
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenExpiry = Date.now() + 3600000; // 1 hour from now
+
+    user.resetToken = resetToken;
+    user.resetTokenExpiry = resetTokenExpiry;
+    await user.save();
+
+    // Send email
+    const resetUrl = `http://localhost:8080/reset-password?token=${resetToken}`;
+    
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Password Reset Request',
+      html: `
+        <p>You requested a password reset for your Ownify account.</p>
+        <p>Click this link to reset your password:</p>
+        <a href="${resetUrl}">${resetUrl}</a>
+        <p>This link will expire in 1 hour.</p>
+        <p>If you didn't request this, please ignore this email.</p>
+      `
+    });
+
+    res.json({ message: "Password reset email sent" });
+  } catch (error) {
+    res.status(400).json({ message: "Error processing request", error: error.message });
+  }
+};
+
+
+export const resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = resetPasswordSchema.parse(req.body);
+    
+    // Find user by token and check expiry
+    const user = await User.findOne({ 
+      resetToken: token,
+      resetTokenExpiry: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+
+    // Update password and clear reset token
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.resetToken = undefined;
+    user.resetTokenExpiry = undefined;
+    await user.save();
+
+    res.json({ message: "Password updated successfully" });
+  } catch (error) {
+    res.status(400).json({ message: "Error resetting password", error: error.message });
   }
 };

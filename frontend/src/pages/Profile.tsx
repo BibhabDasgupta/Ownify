@@ -23,7 +23,7 @@ import { useForm } from "react-hook-form";
 import { useToast } from "@/components/ui/use-toast";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { AlertCircle, Pencil } from "lucide-react";
+import { AlertCircle, Pencil, X, Mail } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import axios from "axios";
 
@@ -35,12 +35,25 @@ const profileSchema = z.object({
 });
 
 type Profile = z.infer<typeof profileSchema>;
+interface DeviceStats {
+  totalDevices: number;
+  lastRegisteredDate: string | null;
+}
 
 export default function Profile() {
   const [isLoading, setIsLoading] = useState(false);
   const [profileCompleted, setProfileCompleted] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const navigate = useNavigate();
+  // Add these state variables at the top of your Profile component
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [changePasswordEmail, setChangePasswordEmail] = useState("");
+  const [changePasswordLoading, setChangePasswordLoading] = useState(false);
+  const [changePasswordSuccess, setChangePasswordSuccess] = useState(false);
+  const [deviceStats, setDeviceStats] = useState<DeviceStats>({
+    totalDevices: 0,
+    lastRegisteredDate: null,
+  });
   const { toast } = useToast();
 
   const form = useForm<Profile>({
@@ -52,6 +65,9 @@ export default function Profile() {
       did: "",
     },
   });
+
+
+  const getUserDid = () => localStorage.getItem("user-did") || "";
 
   useEffect(() => {
     const token = localStorage.getItem("user-token");
@@ -68,7 +84,7 @@ export default function Profile() {
           headers: { Authorization: `Bearer ${token}` },
         });
         console.log("API response:", response.data);
-        const { name,email, phone, did } = response.data;
+        const { name, email, phone, did } = response.data;
         const metamaskAddress = localStorage.getItem("user-did") || "";
 
         const profileData = {
@@ -92,7 +108,7 @@ export default function Profile() {
         //   navigate("/dashboard", { replace: true });
         //   return;
         // }
-        
+
         if (profileStatus === "true") {
           setProfileCompleted(true);
           const savedProfile = localStorage.getItem("user-profile");
@@ -113,6 +129,7 @@ export default function Profile() {
         } else {
           setIsEditing(true); // Edit mode for incomplete profiles
         }
+        await fetchDeviceStats();
       } catch (error) {
         console.error("Error fetching user data:", error);
         const metamaskAddress = localStorage.getItem("user-did");
@@ -153,7 +170,7 @@ export default function Profile() {
 
     fetchUserData();
   }, [form, navigate, toast]);
-  
+
   const onSubmit = async (data: Profile) => {
     setIsLoading(true);
 
@@ -171,12 +188,10 @@ export default function Profile() {
     try {
       // Send profile data to backend
 
-
       const profileData = {
         ...data,
-        did: data.did.toLowerCase() // Ensure DID is lowercase
+        did: data.did.toLowerCase(), // Ensure DID is lowercase
       };
-
 
       await axios.put(
         "http://localhost:5000/api/auth/update-profile",
@@ -188,7 +203,7 @@ export default function Profile() {
       localStorage.setItem("user-profile", JSON.stringify(profileData));
       localStorage.setItem("user-did", profileData.did);
       localStorage.setItem("profile-completed", "true");
-      if (data.email) localStorage.setItem("user-email", profileData.email);// Store email for future use
+      if (data.email) localStorage.setItem("user-email", profileData.email); // Store email for future use
       setProfileCompleted(true);
       setIsEditing(false);
 
@@ -210,6 +225,47 @@ export default function Profile() {
     }
   };
 
+  const fetchDeviceStats = async () => {
+    const token = localStorage.getItem("user-token");
+    if (!token) return;
+
+    try {
+      const userDid = form.getValues("did") || localStorage.getItem("user-did");
+      if (!userDid || userDid==="undefined") {
+        setDeviceStats({ totalDevices: 0, lastRegisteredDate: null });
+        return;
+      }
+
+      const response = await axios.get(
+        `http://localhost:5000/api/device/stats/${userDid}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setDeviceStats(response.data);
+    } catch (error) {
+      console.error("Error fetching device stats:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load device statistics",
+      });
+    }
+  };
+
+  const getDaysSinceLastRegistration = (dateString: string | null): string => {
+    if (!dateString) return "Never";
+
+    const lastDate = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - lastDate.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    return diffDays === 0
+      ? "Today"
+      : `${diffDays} day${diffDays !== 1 ? "s" : ""} ago`;
+  };
+
   const handleGoToDashboard = () => {
     form.trigger().then((isValid) => {
       if (isValid && profileCompleted) {
@@ -222,6 +278,33 @@ export default function Profile() {
         });
       }
     });
+  };
+
+  const handleChangePassword = async () => {
+    setChangePasswordLoading(true);
+    try {
+      const email =
+        form.getValues("email") || localStorage.getItem("user-email");
+      if (!email) {
+        throw new Error("No email found in profile");
+      }
+
+      await axios.post("http://localhost:5000/api/auth/forgot-password", {
+        email,
+      });
+      setChangePasswordSuccess(true);
+      setChangePasswordEmail(email);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description:
+          error.response?.data?.message ||
+          "Failed to send password reset email",
+      });
+    } finally {
+      setChangePasswordLoading(false);
+    }
   };
 
   const toggleEditMode = () => {
@@ -268,7 +351,10 @@ export default function Profile() {
               </CardHeader>
               <CardContent>
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <form
+                    onSubmit={form.handleSubmit(onSubmit)}
+                    className="space-y-6"
+                  >
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <FormField
                         control={form.control}
@@ -282,7 +368,11 @@ export default function Profile() {
                                 {...field}
                                 required
                                 readOnly={!isEditing && profileCompleted}
-                                className={!isEditing && profileCompleted ? "bg-muted/50" : ""}
+                                className={
+                                  !isEditing && profileCompleted
+                                    ? "bg-muted/50"
+                                    : ""
+                                }
                               />
                             </FormControl>
                             <FormMessage />
@@ -302,7 +392,11 @@ export default function Profile() {
                                 type="email"
                                 required
                                 readOnly={!isEditing && profileCompleted}
-                                className={!isEditing && profileCompleted ? "bg-muted/50" : ""}
+                                className={
+                                  !isEditing && profileCompleted
+                                    ? "bg-muted/50"
+                                    : ""
+                                }
                               />
                             </FormControl>
                             <FormMessage />
@@ -321,7 +415,11 @@ export default function Profile() {
                                 {...field}
                                 required
                                 readOnly={!isEditing && profileCompleted}
-                                className={!isEditing && profileCompleted ? "bg-muted/50" : ""}
+                                className={
+                                  !isEditing && profileCompleted
+                                    ? "bg-muted/50"
+                                    : ""
+                                }
                               />
                             </FormControl>
                             <FormMessage />
@@ -333,16 +431,22 @@ export default function Profile() {
                         name="did"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>DID (Decentralized Identifier) *</FormLabel>
+                            <FormLabel>
+                              DID (Decentralized Identifier) *
+                            </FormLabel>
                             <FormControl>
                               <Input
                                 {...field}
                                 readOnly={!isEditing && profileCompleted}
-                                className={!isEditing && profileCompleted ? "bg-muted/50" : ""}
+                                className={
+                                  !isEditing && profileCompleted
+                                    ? "bg-muted/50"
+                                    : ""
+                                }
                                 placeholder="Enter your DID (Case Insensitive)"
                                 required
                               />
-                            </FormControl> 
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -355,7 +459,11 @@ export default function Profile() {
                         </Button>
                       ) : (
                         profileCompleted && (
-                          <Button type="button" variant="outline" onClick={handleGoToDashboard}>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleGoToDashboard}
+                          >
                             Go to Dashboard
                           </Button>
                         )
@@ -374,16 +482,22 @@ export default function Profile() {
                 <CardContent>
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Registered Devices</span>
-                      <span className="font-medium">3</span>
+                      <span className="text-muted-foreground">
+                        Registered Devices
+                      </span>
+                      <span className="font-medium">
+                        {deviceStats.totalDevices}
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Verified Transfers</span>
-                      <span className="font-medium">7</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Last Activity</span>
-                      <span className="font-medium">2 days ago</span>
+                      <span className="text-muted-foreground">
+                        Last Registration
+                      </span>
+                      <span className="font-medium">
+                        {getDaysSinceLastRegistration(
+                          deviceStats.lastRegisteredDate
+                        )}
+                      </span>
                     </div>
                   </div>
                 </CardContent>
@@ -393,18 +507,94 @@ export default function Profile() {
                   <CardTitle>Account Security</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Button variant="outline" className="w-full justify-start">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() => {
+                      const email =
+                        form.getValues("email") ||
+                        localStorage.getItem("user-email");
+                      if (email) {
+                        setChangePasswordEmail(email);
+                        setChangePasswordOpen(true);
+                      } else {
+                        toast({
+                          variant: "destructive",
+                          title: "Error",
+                          description:
+                            "No email address found to send reset link",
+                        });
+                      }
+                    }}
+                  >
                     Change Password
                   </Button>
-                  <Button variant="outline" className="w-full justify-start">
+                  {/* <Button variant="outline" className="w-full justify-start">
                     Enable 2FA
-                  </Button>
+                  </Button> */}
                 </CardContent>
               </Card>
             </div>
           </div>
         </div>
       </main>
+      {changePasswordOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-background p-6 rounded-lg max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Change Password</h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setChangePasswordOpen(false);
+                  setChangePasswordSuccess(false);
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {changePasswordSuccess ? (
+              <div className="space-y-4">
+                <Alert>
+                  <Mail className="h-4 w-4" />
+                  <AlertDescription>
+                    Password reset link sent to {changePasswordEmail}. Please
+                    check your inbox.
+                  </AlertDescription>
+                </Alert>
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    setChangePasswordOpen(false);
+                    setChangePasswordSuccess(false);
+                  }}
+                >
+                  Close
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p>We'll send a password reset link to your email:</p>
+                <Input
+                  type="email"
+                  value={changePasswordEmail}
+                  onChange={(e) => setChangePasswordEmail(e.target.value)}
+                  disabled={!!form.getValues("email")}
+                />
+                <Button
+                  className="w-full"
+                  onClick={handleChangePassword}
+                  disabled={changePasswordLoading || !changePasswordEmail}
+                >
+                  {changePasswordLoading ? "Sending..." : "Send Reset Link"}
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       <Footer />
     </div>
   );

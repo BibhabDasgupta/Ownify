@@ -6,6 +6,8 @@ const userSchema = new mongoose.Schema({
   name: { type: String },
   phone: { type: String },
   did: { type: String },
+  resetToken: { type: String },
+  resetTokenExpiry: { type: Date },
   registeredDevices: [
     {
       deviceName: { type: String, required: true },

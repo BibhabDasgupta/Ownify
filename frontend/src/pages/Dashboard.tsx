@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Shield,
   Search,
@@ -9,11 +9,18 @@ import {
   Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Resizable } from "re-resizable";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogHeader,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import FeatureCard from "@/components/FeatureCard";
+import { CalendarDays, Cpu, User } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Link, useNavigate } from "react-router-dom";
@@ -31,83 +38,91 @@ interface MetaMaskProvider {
 
 const contractAddress = "0x88346Ba7902f2C287304Ec86dfFA6909563Bf56B";
 const contractABI = [
-    {
-      "inputs": [
-        {
-          "internalType": "bytes32",
-          "name": "hashedDeviceId",
-          "type": "bytes32"
-        },
-        {
-          "internalType": "bytes32",
-          "name": "hashedDID",
-          "type": "bytes32"
-        },
-        {
-          "internalType": "bytes",
-          "name": "userSignature",
-          "type": "bytes"
-        },
-        {
-          "internalType": "bytes",
-          "name": "systemSignature",
-          "type": "bytes"
-        }
-      ],
-      "name": "registerDevice",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "bytes32",
-          "name": "hashedDeviceId",
-          "type": "bytes32"
-        }
-      ],
-      "name": "getRegistration",
-      "outputs": [
-        {
-          "internalType": "bytes32",
-          "name": "hashedDID",
-          "type": "bytes32"
-        },
-        {
-          "internalType": "bytes",
-          "name": "userSignature",
-          "type": "bytes"
-        },
-        {
-          "internalType": "bytes",
-          "name": "systemSignature",
-          "type": "bytes"
-        },
-        {
-          "internalType": "address",
-          "name": "registeredBy",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "timestamp",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function",
-      "constant": true
-    }
+  {
+    inputs: [
+      {
+        internalType: "bytes32",
+        name: "hashedDeviceId",
+        type: "bytes32",
+      },
+      {
+        internalType: "bytes32",
+        name: "hashedDID",
+        type: "bytes32",
+      },
+      {
+        internalType: "bytes",
+        name: "userSignature",
+        type: "bytes",
+      },
+      {
+        internalType: "bytes",
+        name: "systemSignature",
+        type: "bytes",
+      },
+    ],
+    name: "registerDevice",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "bytes32",
+        name: "hashedDeviceId",
+        type: "bytes32",
+      },
+    ],
+    name: "getRegistration",
+    outputs: [
+      {
+        internalType: "bytes32",
+        name: "hashedDID",
+        type: "bytes32",
+      },
+      {
+        internalType: "bytes",
+        name: "userSignature",
+        type: "bytes",
+      },
+      {
+        internalType: "bytes",
+        name: "systemSignature",
+        type: "bytes",
+      },
+      {
+        internalType: "address",
+        name: "registeredBy",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "timestamp",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+    constant: true,
+  },
 ];
 
 const SYSTEM_PUBLIC_KEY = "0x5B0158FdB128C517E6d8d8BE20b3A0dA8ddAc505";
 
 export default function Dashboard() {
-  const [activeDialog, setActiveDialog] = useState<"verification" | "checking" | "registration" | "result" | "verifyResult" | null>(null);
+  const [activeDialog, setActiveDialog] = useState<
+    | "verification"
+    | "checking"
+    | "registration"
+    | "result"
+    | "verifyResult"
+    | null
+  >(null);
   const [showMessages, setShowMessages] = useState(false);
   const [messages, setMessages] = useState([]);
   const [deviceName, setDeviceName] = useState("");
+  const [selectedMessage, setSelectedMessage] = useState<any>(null);
   const [deviceId, setDeviceId] = useState("");
   const [privateKey, setPrivateKey] = useState("");
   const [checkDeviceId, setCheckDeviceId] = useState("");
@@ -126,16 +141,24 @@ export default function Dashboard() {
   } | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const resizableHandleStyle = {
+    width: "4px",
+    height: "100%",
+    right: "0", // Position handle on the right but resize to left
+    top: "0",
+    cursor: "col-resize",
+    backgroundColor: "transparent",
+  };
 
   const isLoggedIn = () => !!localStorage.getItem("user-token");
-  const isProfileCompleted = () => localStorage.getItem("profile-completed") === "true";
+  const isProfileCompleted = () =>
+    localStorage.getItem("profile-completed") === "true";
   const getUserDid = () => localStorage.getItem("user-did") || "";
 
   useEffect(() => {
     if (isLoggedIn() && !isProfileCompleted()) {
       navigate("/profile");
-    }
-    else if (isLoggedIn()) {
+    } else if (isLoggedIn()) {
       fetchMessages(); // Add this line
     }
   }, [navigate]);
@@ -143,28 +166,31 @@ export default function Dashboard() {
   const handleOpenVerification = () => setActiveDialog("verification");
   const handleOpenChecking = () => setActiveDialog("checking");
 
-
   const fetchMessages = async () => {
     const userDid = getUserDid();
     try {
       const token = localStorage.getItem("user-token");
-      const response = await fetch("http://localhost:5000/api/device/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          userDid,
-        }),
-      });
-  
+      const response = await fetch(
+        "http://localhost:5000/api/device/messages",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            userDid,
+          }),
+        }
+      );
+
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Failed to fetch messages");
-  
+      if (!response.ok)
+        throw new Error(data.error || "Failed to fetch messages");
+
       setMessages(data.messages); // Assuming backend returns { messages: [...] }
       const unread = data.messages.filter((msg: any) => !msg.read).length;
-    setUnreadCount(unread);
+      setUnreadCount(unread);
     } catch (error) {
       toast({
         title: "Error",
@@ -177,22 +203,24 @@ export default function Dashboard() {
   const markAsRead = async (messageId: string) => {
     try {
       const token = localStorage.getItem("user-token");
-      const response = await fetch("http://localhost:5000/api/device/mark-as-read", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ messageId, userDid: getUserDid() }),
-      });
-  
+      const response = await fetch(
+        "http://localhost:5000/api/device/mark-as-read",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ messageId, userDid: getUserDid() }),
+        }
+      );
+
       if (!response.ok) throw new Error("Failed to mark message as read");
       fetchMessages(); // Refresh messages
     } catch (error) {
       console.error("Error marking message as read:", error);
     }
   };
-
 
   const extractAddressFromDid = (did: string) => {
     if (did.startsWith("did:ethr:")) {
@@ -228,7 +256,7 @@ export default function Dashboard() {
       return;
     }
     setShowMessages(true);
-     fetchMessages();
+    fetchMessages();
   };
 
   const handleCloseDialog = () => {
@@ -253,13 +281,55 @@ export default function Dashboard() {
     navigate("/activity");
   };
 
+  const handleMessageClick = (message: any) => {
+    markAsRead(message._id);
+    setSelectedMessage(message);
+  };
+
+  const parseMessageContent = (content: string) => {
+    const isReRegistration = content.includes("re-register");
+    const title = isReRegistration
+      ? "Re-Registration Attempt"
+      : "Device Registration Complete";
+
+
+    console.log(content);
+    const deviceIdMatch = content.match(/ID: (\d+)/);
+    const deviceId = deviceIdMatch ? deviceIdMatch[1] : null;
+
+    const detailsMatch = content.match(/Details of the registrant: (.*)/s);
+    let details: { label: string; value: string }[] = [];
+
+    if (detailsMatch) {
+      details = detailsMatch[1]
+        .split("-")
+        .filter((item) => item.trim())
+        .map((item) => {
+          const [label, ...valueParts] = item.split(":");
+          return {
+            label: label.trim(),
+            value: valueParts.join(":").trim(),
+          };
+        });
+    }
+
+    return {
+      title,
+      deviceId,
+      details,
+      isReRegistration,
+      rawContent: content,
+    };
+  };
+
   const handleRegisterDevice = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const token = localStorage.getItem("user-token");
       console.log("Token being sent:", token);
 
-      const provider = (await detectEthereumProvider()) as MetaMaskProvider | null;
+      const provider =
+        (await detectEthereumProvider()) as MetaMaskProvider | null;
       if (!provider) throw new Error("MetaMask not detected");
 
       await provider.request({ method: "eth_requestAccounts" });
@@ -267,7 +337,6 @@ export default function Dashboard() {
       const signer = await ethersProvider.getSigner(); // Await signer in v6
       const metaMaskAddress = await signer.getAddress(); // Await getAddress
       const metaMaskDid = `did:ethr:${metaMaskAddress}`;
-
 
       const userDid = getUserDid();
       const didAddress = extractAddressFromDid(userDid);
@@ -279,89 +348,103 @@ export default function Dashboard() {
       console.log(privateKeyAddress);
 
       if (!didAddress || didAddress !== metaMaskDidAddress) {
-        throw new Error("The DID does not match your MetaMask address. Please use the correct MetaMask account.");
+        throw new Error(
+          "The DID does not match your MetaMask address. Please use the correct MetaMask account."
+        );
       }
 
       console.log("ethers:", ethers); // Debug ethers availability
-    if (!ethers.keccak256) throw new Error("ethers.keccak256 is undefined");
+      if (!ethers.keccak256) throw new Error("ethers.keccak256 is undefined");
 
       const hashedDeviceId = ethers.keccak256(ethers.toUtf8Bytes(deviceId));
       const hashedDID = ethers.keccak256(ethers.toUtf8Bytes(userDid));
 
+      const contract = new ethers.Contract(
+        contractAddress,
+        contractABI,
+        signer
+      );
 
-      const contract = new ethers.Contract(contractAddress, contractABI, signer);
-
-      const [existingHashedDID, , , registeredBy, timestamp] = await contract.getRegistration(hashedDeviceId);
+      const [existingHashedDID, , , registeredBy, timestamp] =
+        await contract.getRegistration(hashedDeviceId);
 
       if (existingHashedDID !== ethers.ZeroHash) {
         // Device is pre-registered; send registeredBy address to backend
         const originalUserDid = `${registeredBy}`; // Assuming DID format matches
-  
-        const response = await fetch("http://localhost:5000/api/device/check-and-notify", {
+
+        const response = await fetch(
+          "http://localhost:5000/api/device/check-and-notify",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              deviceId,
+              originalUserDid,
+              newUserDid: userDid,
+            }),
+          }
+        );
+
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          const text = await response.text();
+          throw new Error(text || "Server returned non-JSON response");
+        }
+
+        const data = await response.json();
+        if (!response.ok)
+          throw new Error(data.error || "Failed to process pre-registration");
+
+        toast({
+          title: "Registration Failed",
+          description: `This device is already registered by DID: ${originalUserDid}. The original owner has been notified.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      //   console.log("Registration - deviceId:", deviceId);
+      // console.log("Registration - hashedDeviceId:", hashedDeviceId);
+      // console.log("Registration - userDid:", userDid);
+      // console.log("Registration - hashedDID:", hashedDID);
+
+      const messageHash = ethers.keccak256(
+        ethers.solidityPacked(
+          ["bytes32", "bytes32"],
+          [hashedDeviceId, hashedDID]
+        )
+      );
+
+      const userSignature = await signer.signMessage(
+        ethers.getBytes(messageHash)
+      );
+      //onst systemSignature = await systemWallet.signMessage(ethers.getBytes(messageHash));
+
+      const registerResponse = await fetch(
+        "http://localhost:5000/api/device/register",
+        {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
+            deviceName,
             deviceId,
-            originalUserDid,
-            newUserDid: userDid,
+            userSignature,
+            userDid,
           }),
-        });
-
-
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          const text = await response.text();
-          throw new Error(text || 'Server returned non-JSON response');
         }
-
-
-        const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Failed to process pre-registration");
-
-      toast({
-        title: "Registration Failed",
-        description: `This device is already registered by DID: ${originalUserDid}. The original owner has been notified.`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-
-    //   console.log("Registration - deviceId:", deviceId);
-    // console.log("Registration - hashedDeviceId:", hashedDeviceId);
-    // console.log("Registration - userDid:", userDid);
-    // console.log("Registration - hashedDID:", hashedDID);
-
-
-
-      const messageHash = ethers.keccak256(
-        ethers.solidityPacked(["bytes32", "bytes32"], [hashedDeviceId, hashedDID])
       );
-
-      const userSignature = await signer.signMessage(ethers.getBytes(messageHash));
-     //onst systemSignature = await systemWallet.signMessage(ethers.getBytes(messageHash));
-
-      const registerResponse = await fetch("http://localhost:5000/api/device/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          deviceName,
-          deviceId,
-          userSignature,
-          userDid,
-        }),
-      });
 
       const data = await registerResponse.json();
       console.log("Backend response:", data);
       console.log("Response status:", registerResponse.status);
-      if (!registerResponse.ok) throw new Error(data.error || "Registration failed");
+      if (!registerResponse.ok)
+        throw new Error(data.error || "Registration failed");
 
       //const contract = new ethers.Contract(contractAddress, contractABI, signer);
       const tx = await contract.registerDevice(
@@ -388,20 +471,32 @@ export default function Dashboard() {
     }
   };
 
-
   const handleCheckDevice = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const provider = (await detectEthereumProvider()) as MetaMaskProvider | null;
+      const provider =
+        (await detectEthereumProvider()) as MetaMaskProvider | null;
       if (!provider) throw new Error("MetaMask not detected");
 
       await provider.request({ method: "eth_requestAccounts" });
       const ethersProvider = new ethers.BrowserProvider(provider);
       const signer = await ethersProvider.getSigner();
-      const contract = new ethers.Contract(contractAddress, contractABI, signer);
+      const contract = new ethers.Contract(
+        contractAddress,
+        contractABI,
+        signer
+      );
 
-      const hashedDeviceId = ethers.keccak256(ethers.toUtf8Bytes(checkDeviceId));
-      const [hashedDID, userSignature, systemSignature, registeredBy, timestamp] = await contract.getRegistration(hashedDeviceId);
+      const hashedDeviceId = ethers.keccak256(
+        ethers.toUtf8Bytes(checkDeviceId)
+      );
+      const [
+        hashedDID,
+        userSignature,
+        systemSignature,
+        registeredBy,
+        timestamp,
+      ] = await contract.getRegistration(hashedDeviceId);
 
       if (hashedDID === ethers.ZeroHash) {
         setCheckResult({
@@ -413,9 +508,15 @@ export default function Dashboard() {
 
       // Verify system signature
       const messageHash = ethers.keccak256(
-        ethers.solidityPacked(["bytes32", "bytes32"], [hashedDeviceId, hashedDID])
+        ethers.solidityPacked(
+          ["bytes32", "bytes32"],
+          [hashedDeviceId, hashedDID]
+        )
       );
-      const recoveredAddress = ethers.verifyMessage(ethers.getBytes(messageHash), systemSignature);
+      const recoveredAddress = ethers.verifyMessage(
+        ethers.getBytes(messageHash),
+        systemSignature
+      );
 
       if (recoveredAddress.toLowerCase() !== SYSTEM_PUBLIC_KEY.toLowerCase()) {
         toast({
@@ -429,9 +530,12 @@ export default function Dashboard() {
 
       // Fetch user details from backend using registeredBy address
       //const token = localStorage.getItem("user-token");
-      const response = await fetch(`http://localhost:5000/api/device/by-address?address=${registeredBy}`, {
-        method: "GET",
-      });
+      const response = await fetch(
+        `http://localhost:5000/api/device/by-address?address=${registeredBy}`,
+        {
+          method: "GET",
+        }
+      );
 
       const userData = await response.json();
       if (!response.ok && response.status !== 404) {
@@ -468,36 +572,44 @@ export default function Dashboard() {
     }
   };
 
-
   const handleVerifyDevice = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const provider = (await detectEthereumProvider()) as MetaMaskProvider | null;
+      const provider =
+        (await detectEthereumProvider()) as MetaMaskProvider | null;
       if (!provider) throw new Error("MetaMask not detected");
 
       await provider.request({ method: "eth_requestAccounts" });
       const ethersProvider = new ethers.BrowserProvider(provider);
       const signer = await ethersProvider.getSigner();
       const metaMaskAddress = await signer.getAddress();
-      const contract = new ethers.Contract(contractAddress, contractABI, signer);
+      const contract = new ethers.Contract(
+        contractAddress,
+        contractABI,
+        signer
+      );
 
-      const hashedDeviceId = ethers.keccak256(ethers.toUtf8Bytes(verifyDeviceId));
-      const providedHashedDID = ethers.keccak256(ethers.toUtf8Bytes(verifyUserDid.toLowerCase()));
-      const [hashedDID, userSignature, systemSignature, registeredBy,  ] = await contract.getRegistration(hashedDeviceId);
-
+      const hashedDeviceId = ethers.keccak256(
+        ethers.toUtf8Bytes(verifyDeviceId)
+      );
+      const providedHashedDID = ethers.keccak256(
+        ethers.toUtf8Bytes(verifyUserDid.toLowerCase())
+      );
+      const [hashedDID, userSignature, systemSignature, registeredBy] =
+        await contract.getRegistration(hashedDeviceId);
 
       console.log("Verification - verifyDeviceId:", verifyDeviceId);
-    console.log("Verification - hashedDeviceId:", hashedDeviceId);
-    console.log("Verification - verifyUserDid:", verifyUserDid);
-    console.log("Verification - providedHashedDID:", providedHashedDID);
-    console.log("Verification - hashedDID (from blockchain):", hashedDID);
+      console.log("Verification - hashedDeviceId:", hashedDeviceId);
+      console.log("Verification - verifyUserDid:", verifyUserDid);
+      console.log("Verification - providedHashedDID:", providedHashedDID);
+      console.log("Verification - hashedDID (from blockchain):", hashedDID);
 
       console.log(registeredBy);
       // Check if device exists
       if (hashedDID === ethers.ZeroHash) {
         setVerifyResult({
           isValid: false,
-          message: "Device ID does not exist on the blockchain.",    
+          message: "Device ID does not exist on the blockchain.",
         });
         setActiveDialog("verifyResult");
         return;
@@ -505,14 +617,23 @@ export default function Dashboard() {
 
       // Verify system signature
       const messageHash = ethers.keccak256(
-        ethers.solidityPacked(["bytes32", "bytes32"], [hashedDeviceId, hashedDID])
+        ethers.solidityPacked(
+          ["bytes32", "bytes32"],
+          [hashedDeviceId, hashedDID]
+        )
       );
-      const systemRecoveredAddress = ethers.verifyMessage(ethers.getBytes(messageHash), systemSignature);
+      const systemRecoveredAddress = ethers.verifyMessage(
+        ethers.getBytes(messageHash),
+        systemSignature
+      );
       //console.log(systemRecoveredAddress);
-      if (systemRecoveredAddress.toLowerCase() !== SYSTEM_PUBLIC_KEY.toLowerCase()) {
+      if (
+        systemRecoveredAddress.toLowerCase() !== SYSTEM_PUBLIC_KEY.toLowerCase()
+      ) {
         setVerifyResult({
           isValid: false,
-          message: "System signature verification failed. Registration is not valid.",
+          message:
+            "System signature verification failed. Registration is not valid.",
         });
         setActiveDialog("verifyResult");
         console.log("Hello");
@@ -520,8 +641,11 @@ export default function Dashboard() {
       }
 
       // Verify user signature with current MetaMask address
-      const userRecoveredAddress = ethers.verifyMessage(ethers.getBytes(messageHash), userSignature);
-      
+      const userRecoveredAddress = ethers.verifyMessage(
+        ethers.getBytes(messageHash),
+        userSignature
+      );
+
       if (userRecoveredAddress.toLowerCase() !== verifyUserDid.toLowerCase()) {
         setVerifyResult({
           isValid: false,
@@ -534,14 +658,14 @@ export default function Dashboard() {
       //const userRecoveredAddress = ethers.verifyMessage(ethers.getBytes(messageHash), userSignature);
       console.log(metaMaskAddress);
       console.log(userRecoveredAddress);
-    // if (registeredBy.toLowerCase() !== metaMaskAddress.toLowerCase()) {
-    //   setVerifyResult({
-    //     isValid: false,
-    //     message: "User signature does not match your MetaMask address.",
-    //   });
-    //   setActiveDialog("verifyResult");
-    //   return;
-    // }
+      // if (registeredBy.toLowerCase() !== metaMaskAddress.toLowerCase()) {
+      //   setVerifyResult({
+      //     isValid: false,
+      //     message: "User signature does not match your MetaMask address.",
+      //   });
+      //   setActiveDialog("verifyResult");
+      //   return;
+      // }
 
       // Verify if hashedDID matches the provided userDid
       if (hashedDID !== providedHashedDID) {
@@ -557,7 +681,8 @@ export default function Dashboard() {
       // All checks passed
       setVerifyResult({
         isValid: true,
-        message: "Correct: Device ID is mapped to your DID and signatures are valid.",
+        message:
+          "Correct: Device ID is mapped to your DID and signatures are valid.",
       });
       setActiveDialog("verifyResult");
     } catch (error) {
@@ -679,88 +804,251 @@ export default function Dashboard() {
         </div>
 
         <Button
-        variant="secondary"
-        size="icon"
-        className="fixed bottom-8 right-8 h-12 w-12 rounded-full shadow-lg animate-float"
-        onClick={handleOpenMessages}
-      >
-        <MessageCircle className="h-6 w-6" />
-        {unreadCount > 0 && (
-    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-      {unreadCount}
-    </span>
-  )}
-      </Button>
+          variant="secondary"
+          size="icon"
+          className="fixed bottom-8 right-8 h-12 w-12 rounded-full shadow-lg animate-float"
+          onClick={handleOpenMessages}
+        >
+          <MessageCircle className="h-6 w-6" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+              {unreadCount}
+            </span>
+          )}
+        </Button>
 
-      <Sheet open={showMessages} onOpenChange={setShowMessages}>
-        <SheetContent className="w-[400px] sm:w-[540px]">
-          <div className="h-full flex flex-col">
-            <div className="border-b pb-4">
-              <h3 className="text-lg font-medium">Recent Messages</h3>
-              <p className="text-sm text-muted-foreground">
-                Your recent device notifications and system messages
-              </p>
-            </div>
-
-            <div className="py-4 flex-1 overflow-auto">
-              <div className="space-y-4">
-                {messages.length > 0 ? (
-                  messages.map((message, index) => (
-                    <div
-                      key={index}
-                      className="flex gap-4 p-3 rounded-lg hover:bg-accent transition-color cursor-pointer"
-                      onClick={() => markAsRead(message._id)} 
-                    >
-                      <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <FileCheck className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="flex-1 space-y-1">
-                        <div className="flex justify-between items-start">
-                          <p className="font-medium text-sm">
-                            {message.content.includes("re-register")
-                              ? "Re-Registration Attempt"
-                              : "Device Registration Complete"}
-                          </p>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(message.timestamp).toLocaleDateString()} {/* Format timestamp */}
-                          </span>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {message.content}
-                        </p>
-                        {!message.read && (
-                          <span className="text-xs text-blue-500">Mark As Read</span>
-                        )}
-                      </div>
+        <Sheet open={showMessages} onOpenChange={setShowMessages}>
+          <SheetContent
+            className="p-0 overflow-hidden"
+            side="right"
+            style={{
+              width: "auto",
+              maxWidth: "100vw",
+              right: 0,
+              left: "auto",
+            }}
+          >
+            <Resizable
+              defaultSize={{ width: 400, height: "100%" }}
+              minWidth={300}
+              maxWidth={800}
+              enable={{
+                right: true,
+              }}
+              handleStyles={{
+                right: resizableHandleStyle,
+              }}
+              className="h-full flex"
+              onResize={(e, direction, ref) => {
+                ref.style.left = "auto";
+                ref.style.right = "0";
+              }}
+            >
+              <div className="h-full flex flex-col w-full">
+                <div className="border-b pb-4 px-6 pt-6">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="text-lg font-medium">Recent Messages</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Your recent device notifications and system messages
+                      </p>
                     </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    No messages available.
-                  </p>
-                )}
+                    {/* <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowMessages(false)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button> */}
+                  </div>
+                </div>
+
+                <div className="py-4 flex-1 overflow-auto px-6">
+                  <div className="space-y-4">
+                    {messages.length > 0 ? (
+                      messages.map((message, index) => {
+                        const parsed = parseMessageContent(message.content);
+                        return (
+                          <div
+                            key={index}
+                            className="flex gap-4 p-3 rounded-lg hover:bg-accent transition-colors cursor-pointer"
+                            onClick={() => handleMessageClick(message)}
+                          >
+                            <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                              <FileCheck className="h-5 w-5 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex justify-between items-start">
+                                <p className="font-medium text-sm">
+                                  {parsed.title}
+                                </p>
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                  {new Date(
+                                    message.timestamp
+                                  ).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <p className="text-sm text-muted-foreground truncate">
+                                {parsed.deviceId
+                                  ? `Device ID: ${parsed.deviceId}`
+                                  : parsed.rawContent}
+                              </p>
+                              {!message.read && (
+                                <span className="text-xs text-blue-500 block mt-1">
+                                  New
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No messages available.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="border-t px-6 py-4 mt-auto">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setShowMessages(false)}
+                  >
+                    Close Messages
+                  </Button>
+                </div>
               </div>
-            </div>
+            </Resizable>
+          </SheetContent>
+        </Sheet>
+      </main>
+      <Footer />
 
-            <div className="border-t pt-4 mt-auto">
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => setShowMessages(false)}
-              >
-                Close Messages
-              </Button>
-            </div>
+      <Dialog
+        open={!!selectedMessage}
+        onOpenChange={(open) => !open && setSelectedMessage(null)}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold flex items-center gap-2">
+              {selectedMessage && (
+                <>
+                  {parseMessageContent(selectedMessage.content)
+                    .isReRegistration ? (
+                    <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                  ) : (
+                    <FileCheck className="h-5 w-5 text-green-500" />
+                  )}
+                  {parseMessageContent(selectedMessage.content).title}
+                </>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {selectedMessage && (
+              <>
+                <div className="flex items-center text-sm text-muted-foreground gap-2">
+                  <CalendarDays className="h-4 w-4" />
+                  <span>
+                    {new Date(selectedMessage.timestamp).toLocaleString(
+                      "en-US",
+                      {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }
+                    )}
+                  </span>
+                </div>
+
+                {(() => {
+                  const parsed = parseMessageContent(selectedMessage.content);
+                  return (
+                    <div className="space-y-4">
+                      {parsed.deviceId && (
+                        <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Cpu className="h-5 w-5 text-blue-500" />
+                            <h3 className="font-medium">Device Information</h3>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-xs text-muted-foreground">
+                                Device ID
+                              </p>
+                              <p className="font-medium">{parsed.deviceId}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {parsed.details.length > 0 && (
+                        <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                          <div className="flex items-center gap-2 mb-2">
+                            <User className="h-5 w-5 text-purple-500" />
+                            <h3 className="font-medium">Registrant Details</h3>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {parsed.details.map((detail, i) => (
+                              <div key={i}>
+                                <p className="text-xs text-muted-foreground">
+                                  {detail.label}
+                                </p>
+                                <p className="font-medium">
+                                  {detail.value || "Not provided"}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {parsed.details.length === 0 && (
+                        <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                          <p className="whitespace-pre-line">
+                            {parsed.rawContent}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                <div className="flex justify-end pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedMessage(null)}
+                    className="gap-2"
+                  >
+                    <X className="h-4 w-4" />
+                    Close
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
-        </SheetContent>
-      </Sheet>
-    </main>
-    <Footer />
+        </DialogContent>
+      </Dialog>
 
-      <Dialog open={activeDialog === "verification"} onOpenChange={() => activeDialog === "verification" && handleCloseDialog()}>
+      <Dialog
+        open={activeDialog === "verification"}
+        onOpenChange={() =>
+          activeDialog === "verification" && handleCloseDialog()
+        }
+      >
         <DialogContent className="max-w-md">
           <DialogTitle className="sr-only">Verify Device Ownership</DialogTitle>
-          <Button variant="ghost" size="icon" className="absolute right-4 top-4" onClick={handleCloseDialog}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-4 top-4"
+            onClick={handleCloseDialog}
+          >
             <X className="h-4 w-4" />
           </Button>
           <div className="pt-6">
@@ -770,7 +1058,9 @@ export default function Dashboard() {
             </div>
             <form className="space-y-4" onSubmit={handleVerifyDevice}>
               <div className="space-y-2">
-                <Label htmlFor="verify-did">DID (Decentralized Identifier)</Label>
+                <Label htmlFor="verify-did">
+                  DID (Decentralized Identifier)
+                </Label>
                 <Input
                   id="verify-did"
                   value={verifyUserDid}
@@ -790,23 +1080,37 @@ export default function Dashboard() {
                 />
               </div>
               <div className="pt-2">
-                <Button type="submit" className="w-full">Verify Ownership</Button>
+                <Button type="submit" className="w-full">
+                  Verify Ownership
+                </Button>
               </div>
             </form>
           </div>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={activeDialog === "checking"} onOpenChange={() => activeDialog === "checking" && handleCloseDialog()}>
+      <Dialog
+        open={activeDialog === "checking"}
+        onOpenChange={() => activeDialog === "checking" && handleCloseDialog()}
+      >
         <DialogContent className="max-w-md">
-          <DialogTitle className="sr-only">Check Device Registration</DialogTitle>
-          <Button variant="ghost" size="icon" className="absolute right-4 top-4" onClick={handleCloseDialog}>
+          <DialogTitle className="sr-only">
+            Check Device Registration
+          </DialogTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-4 top-4"
+            onClick={handleCloseDialog}
+          >
             <X className="h-4 w-4" />
           </Button>
           <div className="pt-6">
             <div className="flex items-center gap-2 mb-6">
               <Search className="h-5 w-5 text-purple-500" />
-              <h2 className="text-xl font-semibold">Check Device Registration</h2>
+              <h2 className="text-xl font-semibold">
+                Check Device Registration
+              </h2>
             </div>
 
             <form className="space-y-4" onSubmit={handleCheckDevice}>
@@ -822,7 +1126,9 @@ export default function Dashboard() {
               </div>
 
               <div className="pt-2">
-                <Button type="submit" className="w-full">Check Registration</Button>
+                <Button type="submit" className="w-full">
+                  Check Registration
+                </Button>
               </div>
             </form>
           </div>
@@ -831,7 +1137,9 @@ export default function Dashboard() {
 
       <Dialog
         open={activeDialog === "registration"}
-        onOpenChange={() => activeDialog === "registration" && handleCloseDialog()}
+        onOpenChange={() =>
+          activeDialog === "registration" && handleCloseDialog()
+        }
       >
         <DialogContent className="max-w-md">
           <DialogTitle className="sr-only">Register New Device</DialogTitle>
@@ -854,7 +1162,7 @@ export default function Dashboard() {
                 <Label htmlFor="reg-did">DID (Decentralized Identifier)</Label>
                 <Input
                   id="reg-did"
-                  value={getUserDid()||""}
+                  value={getUserDid() || ""}
                   readOnly
                   placeholder="Enter your DID or connect with Metamask"
                 />
@@ -903,57 +1211,102 @@ export default function Dashboard() {
           </div>
         </DialogContent>
       </Dialog>
-      <Dialog open={activeDialog === "result"} onOpenChange={() => activeDialog === "result" && handleCloseDialog()}>
+      <Dialog
+        open={activeDialog === "result"}
+        onOpenChange={() => activeDialog === "result" && handleCloseDialog()}
+      >
         <DialogContent className="max-w-md">
           <DialogTitle className="sr-only">Device Check Result</DialogTitle>
-          <Button variant="ghost" size="icon" className="absolute right-4 top-4" onClick={handleCloseDialog}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-4 top-4"
+            onClick={handleCloseDialog}
+          >
             <X className="h-4 w-4" />
           </Button>
           <div className="pt-6 text-center">
             {checkResult && checkResult.isRegistered ? (
               <>
-                <h2 className="text-xl font-semibold text-green-600">User Already Registered</h2>
+                <h2 className="text-xl font-semibold text-green-600">
+                  User Already Registered
+                </h2>
                 <div className="mt-4 space-y-2">
                   {checkResult.user ? (
                     <>
-                      <p><strong>Name:</strong> {checkResult.user.name}</p>
-                      <p><strong>Email:</strong> {checkResult.user.email}</p>
-                      <p><strong>DID:</strong> {checkResult.user.did}</p>
+                      <p>
+                        <strong>Name:</strong> {checkResult.user.name}
+                      </p>
+                      <p>
+                        <strong>Email:</strong> {checkResult.user.email}
+                      </p>
+                      <p>
+                        <strong>DID:</strong> {checkResult.user.did}
+                      </p>
                     </>
                   ) : (
-                    <p>No user details found in database for address: {checkResult.registeredBy}</p>
+                    <p>
+                      No user details found in database for address:{" "}
+                      {checkResult.registeredBy}
+                    </p>
                   )}
-                  <p><strong>Registered By:</strong> {checkResult.registeredBy}</p>
-                  <p><strong>Timestamp:</strong> {checkResult.timestamp}</p>
+                  <p>
+                    <strong>Registered By:</strong> {checkResult.registeredBy}
+                  </p>
+                  <p>
+                    <strong>Timestamp:</strong> {checkResult.timestamp}
+                  </p>
                 </div>
               </>
             ) : (
               <>
-                <h2 className="text-xl font-semibold text-red-600">No User Registered</h2>
-                <p className="mt-4">No user is registered for this device ID on the blockchain.</p>
+                <h2 className="text-xl font-semibold text-red-600">
+                  No User Registered
+                </h2>
+                <p className="mt-4">
+                  No user is registered for this device ID on the blockchain.
+                </p>
               </>
             )}
             <div className="mt-6">
-              <Button variant="outline" onClick={handleCloseDialog}>Close</Button>
+              <Button variant="outline" onClick={handleCloseDialog}>
+                Close
+              </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
-      <Dialog open={activeDialog === "verifyResult"} onOpenChange={() => activeDialog === "verifyResult" && handleCloseDialog()}>
+      <Dialog
+        open={activeDialog === "verifyResult"}
+        onOpenChange={() =>
+          activeDialog === "verifyResult" && handleCloseDialog()
+        }
+      >
         <DialogContent className="max-w-md">
           <DialogTitle className="sr-only">Verification Result</DialogTitle>
-          <Button variant="ghost" size="icon" className="absolute right-4 top-4" onClick={handleCloseDialog}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-4 top-4"
+            onClick={handleCloseDialog}
+          >
             <X className="h-4 w-4" />
           </Button>
           <div className="pt-6 text-center">
             {verifyResult && (
               <>
-                <h2 className={`text-xl font-semibold ${verifyResult.isValid ? "text-green-600" : "text-red-600"}`}>
+                <h2
+                  className={`text-xl font-semibold ${
+                    verifyResult.isValid ? "text-green-600" : "text-red-600"
+                  }`}
+                >
                   {verifyResult.isValid ? "Correct" : "Wrong"}
                 </h2>
                 <p className="mt-4">{verifyResult.message}</p>
                 <div className="mt-6">
-                  <Button variant="outline" onClick={handleCloseDialog}>Close</Button>
+                  <Button variant="outline" onClick={handleCloseDialog}>
+                    Close
+                  </Button>
                 </div>
               </>
             )}

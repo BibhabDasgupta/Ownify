@@ -21,6 +21,7 @@ import { useToast } from "@/components/ui/use-toast";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import axios from "axios";
+import {X} from "lucide-react";
 
 // Extend the Window interface to include ethereum
 declare global {
@@ -59,6 +60,10 @@ export default function Login() {
   const [tab, setTab] = useState<"login" | "signup">("login");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
+  const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -323,6 +328,24 @@ export default function Login() {
     window.addEventListener("message", handleMessage);
   };
   
+  const handleForgotPassword = async () => {
+    setForgotPasswordLoading(true);
+    try {
+      await axios.post("http://localhost:5000/api/auth/forgot-password", {
+        email: forgotPasswordEmail
+      });
+      setForgotPasswordSuccess(true);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.response?.data?.message || "Failed to send reset email"
+      });
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
+
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -407,9 +430,14 @@ export default function Login() {
                     />
 
                     <div className="flex justify-between items-center text-sm">
-                      <Link to="#" className="text-primary hover:underline">
+                    <Button
+                        type="button"
+                        variant="link"
+                        className="text-primary hover:underline p-0 h-auto"
+                        onClick={() => setForgotPasswordOpen(true)}
+                      >
                         Forgot password?
-                      </Link>
+                      </Button>
                     </div>
 
                     <Button
@@ -657,7 +685,63 @@ export default function Login() {
           </div>
         </div>
       </main>
-
+        {/* Forgot Password Modal */}
+        {forgotPasswordOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-background p-6 rounded-lg max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Reset Password</h2>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => {
+                  setForgotPasswordOpen(false);
+                  setForgotPasswordSuccess(false);
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            {forgotPasswordSuccess ? (
+              <div className="space-y-4">
+                <Alert>
+                  <Mail className="h-4 w-4" />
+                  <AlertDescription>
+                    Password reset link sent to {forgotPasswordEmail}. Please check your inbox.
+                  </AlertDescription>
+                </Alert>
+                <Button 
+                  className="w-full" 
+                  onClick={() => {
+                    setForgotPasswordOpen(false);
+                    setForgotPasswordSuccess(false);
+                  }}
+                >
+                  Close
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p>Enter your email to receive a password reset link:</p>
+                <Input
+                  type="email"
+                  placeholder="Your email address"
+                  value={forgotPasswordEmail}
+                  onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                />
+                <Button 
+                  className="w-full" 
+                  onClick={handleForgotPassword}
+                  disabled={forgotPasswordLoading || !forgotPasswordEmail}
+                >
+                  {forgotPasswordLoading ? "Sending..." : "Send Reset Link"}
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       <Footer />
     </div>
   );
