@@ -1,5 +1,5 @@
 import express from "express";
-import { registerDevice, getDevices, downloadDevicePDF, getUserByAddress, checkAndNotify, getUserMessages, markMessageAsRead, getDeviceStats} from "../controllers/deviceController.js";
+import { registerDevice, getDevices, downloadDevicePDF, getUserByAddress, checkAndNotify, getUserMessages, markMessageAsRead, getDeviceStats, deleteMessage} from "../controllers/deviceController.js";
 import authMiddleware from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
@@ -24,5 +24,7 @@ router.post("/messages", getUserMessages);
 router.post("/mark-as-read", markMessageAsRead)
 
 router.get("/stats/:userDid", authMiddleware, getDeviceStats);
+
+router.post('/delete-message', authMiddleware, deleteMessage);
 
 export default router;

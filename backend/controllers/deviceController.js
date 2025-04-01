@@ -15,13 +15,12 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const sendNotificationEmail = async (toEmail, deviceId, originalUserDid, newUserDetails) => {
+const sendNotificationEmail = async (toEmail, deviceId, newUserDid) => {
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: toEmail,
     subject: "Attempt to Re-Register Your Device",
-    text: `Someone attempted to re-register your device  (ID: ${deviceId}).\nNew Registrant Details:\n- DID: ${newUserDetails.did}\n- Name: ${newUserDetails.name || "Unknown"}\n- Phone: ${newUserDetails.phone || "N/A"}\n- Email: ${newUserDetails.email || "Unknown"}`,
-  };
+    text: `Someone attempted to re-register your device (ID: ${deviceId}).\n\nAttempted by DID: ${newUserDid}\n\nContact support team for more information.`,  };
   await transporter.sendMail(mailOptions);
 };
 
@@ -35,7 +34,7 @@ export const checkAndNotify = async (req, res) => {
 
     //console.log(originalUserDid);
     // Fetch original user details
-    console.log(originalUserDid);
+    //console.log(originalUserDid);
     const originalUser = await User.findOne({ did: originalUserDid.toLowerCase() });
     
     if (!originalUser) {
@@ -49,20 +48,13 @@ export const checkAndNotify = async (req, res) => {
     }
 
     // Prepare notification message
-    const messageContent = `Someone attempted to re-register your device (ID: ${deviceId}).\n Details of the registrant:\n- DID: ${newUser.did}\n- Name: ${newUser.name || "Unknown"}\n- Phone: ${newUser.phone || "N/A"}\n- Email: ${newUser.email || "Unknown"}`;
-
-    // Save message to original user's database
+    const messageContent = `A new registration attempt was made for your device (ID: ${deviceId}).\n\nAttempted by DID: ${newUserDid}\n\nContact support team for more information.`;    // Save message to original user's database
     originalUser.messages.push({ content: messageContent });
     await originalUser.save();
    // console.log("Hello1");
 
     // Send email to original user
-    await sendNotificationEmail(originalUser.email, deviceId, originalUserDid, {
-      did: newUser.did,
-      name: newUser.name,
-      phone: newUser.phone,
-      email: newUser.email,
-    });
+    await sendNotificationEmail(originalUser.email, deviceId, newUserDid);
     //console.log("Hello2");
     res.status(200).json({ message: "Original user notified successfully" });
   } catch (error) {
@@ -326,6 +318,29 @@ export const markMessageAsRead = async (req, res) => {
     res.status(200).json({ message: "Message marked as read" });
   } catch (error) {
     console.error("Mark as read error:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+// Add this new controller function
+export const deleteMessage = async (req, res) => {
+  try {
+    const { messageId, userDid } = req.body;
+    
+    const user = await User.findOneAndUpdate(
+      { did: userDid },
+      { $pull: { messages: { _id: messageId } } },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.status(200).json({ message: "Message deleted successfully" });
+  } catch (error) {
+    console.error("Delete message error:", error);
     res.status(500).json({ error: error.message });
   }
 };

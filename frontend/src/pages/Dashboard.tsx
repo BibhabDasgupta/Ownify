@@ -18,6 +18,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+// Add to your existing imports
+import { Download } from "lucide-react";
+import { Trash } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import FeatureCard from "@/components/FeatureCard";
 import { CalendarDays, Cpu, User } from "lucide-react";
@@ -149,6 +152,11 @@ export default function Dashboard() {
     cursor: "col-resize",
     backgroundColor: "transparent",
   };
+  const [registrationSuccess, setRegistrationSuccess] = useState<{
+    show: boolean;
+    deviceId?: string;
+    deviceName?: string;
+  }>({ show: false });
 
   const isLoggedIn = () => !!localStorage.getItem("user-token");
   const isProfileCompleted = () =>
@@ -292,26 +300,20 @@ export default function Dashboard() {
       ? "Re-Registration Attempt"
       : "Device Registration Complete";
 
-
-    console.log(content);
     const deviceIdMatch = content.match(/ID: (\d+)/);
+    const didMatch = content.match(/Attempted by DID: (0x\w+)/);
+
     const deviceId = deviceIdMatch ? deviceIdMatch[1] : null;
+    const rawDid = didMatch ? didMatch[1] : null;
 
-    const detailsMatch = content.match(/Details of the registrant: (.*)/s);
-    let details: { label: string; value: string }[] = [];
-
-    if (detailsMatch) {
-      details = detailsMatch[1]
-        .split("-")
-        .filter((item) => item.trim())
-        .map((item) => {
-          const [label, ...valueParts] = item.split(":");
-          return {
-            label: label.trim(),
-            value: valueParts.join(":").trim(),
-          };
-        });
-    }
+    // Simplified details since we're not showing personal info anymore
+    const details = deviceId
+      ? [
+          { label: "Device ID", value: deviceId },
+          { label: "Action", value: "Contact support team" },
+          { label: "Attempted by DID", value: rawDid || "Unknown" },
+        ]
+      : [];
 
     return {
       title,
@@ -341,11 +343,11 @@ export default function Dashboard() {
       const userDid = getUserDid();
       const didAddress = extractAddressFromDid(userDid);
       const metaMaskDidAddress = extractAddressFromDid(metaMaskDid);
-      console.log(privateKey);
+      //console.log(privateKey);
 
-      const userWallet = new ethers.Wallet(privateKey);
-      const privateKeyAddress = userWallet.address;
-      console.log(privateKeyAddress);
+      // const userWallet = new ethers.Wallet(privateKey);
+      // const privateKeyAddress = userWallet.address;
+      // console.log(privateKeyAddress);
 
       if (!didAddress || didAddress !== metaMaskDidAddress) {
         throw new Error(
@@ -464,10 +466,10 @@ export default function Dashboard() {
       );
       await tx.wait();
 
-      toast({
-        title: "Success",
-        description: "Device registered successfully!",
-        variant: "default",
+      setRegistrationSuccess({
+        show: true,
+        deviceId,
+        deviceName,
       });
       handleCloseDialog();
     } catch (error) {
@@ -577,6 +579,84 @@ export default function Dashboard() {
         variant: "destructive",
       });
       handleCloseDialog();
+    }
+  };
+
+  const handleDownloadRegistrationPDF = async () => {
+    try {
+      const token = localStorage.getItem("user-token");
+      const userDid = getUserDid();
+
+      const response = await fetch(
+        `http://localhost:5000/api/device/download/${registrationSuccess.deviceId}?userDid=${userDid}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to download PDF");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${registrationSuccess.deviceId}_registration.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Success",
+        description: "PDF downloaded successfully",
+      });
+
+      setRegistrationSuccess({ show: false });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: (error as Error).message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteMessage = async (messageId: string) => {
+    try {
+      const token = localStorage.getItem("user-token");
+      const response = await fetch(
+        "http://localhost:5000/api/device/delete-message",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            messageId,
+            userDid: getUserDid(),
+          }),
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to delete message");
+      fetchMessages(); // Refresh messages
+      toast({
+        title: "Success",
+        description: "Message deleted successfully",
+      });
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      toast({
+        title: "Error",
+        description: (error as Error).message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -907,6 +987,17 @@ export default function Dashboard() {
                                 </span>
                               )}
                             </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-50"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteMessage(message._id);
+                              }}
+                            >
+                              <Trash className="h-4 w-4" />
+                            </Button>
                           </div>
                         );
                       })
@@ -933,7 +1024,45 @@ export default function Dashboard() {
         </Sheet>
       </main>
       <Footer />
-
+      // Add this Dialog component near your other Dialogs in the JSX return
+      statement
+      <Dialog
+        open={registrationSuccess.show}
+        onOpenChange={(open) =>
+          !open && setRegistrationSuccess({ show: false })
+        }
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-green-600">
+              Registration Successful!
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p>
+              Your device <strong>{registrationSuccess.deviceName}</strong> (ID:{" "}
+              <strong>{registrationSuccess.deviceId}</strong>) has been
+              successfully registered.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Please download and save the registration certificate for future
+              verification purposes.
+            </p>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setRegistrationSuccess({ show: false })}
+              >
+                Close
+              </Button>
+              <Button onClick={handleDownloadRegistrationPDF}>
+                <Download className="h-4 w-4 mr-2" />
+                Download PDF
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={!!selectedMessage}
         onOpenChange={(open) => !open && setSelectedMessage(null)}
@@ -999,7 +1128,9 @@ export default function Dashboard() {
                         <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
                           <div className="flex items-center gap-2 mb-2">
                             <User className="h-5 w-5 text-purple-500" />
-                            <h3 className="font-medium">Registrant Details</h3>
+                            <h3 className="font-medium">
+                              Registration Details
+                            </h3>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {parsed.details.map((detail, i) => (
@@ -1008,10 +1139,15 @@ export default function Dashboard() {
                                   {detail.label}
                                 </p>
                                 <p className="font-medium">
-                                  {detail.value || "Not provided"}
+                                  {detail.value ||
+                                    "Contact support team for details"}
                                 </p>
                               </div>
                             ))}
+                          </div>
+                          <div className="mt-4 text-sm text-muted-foreground">
+                            For more information about this registration
+                            attempt, please contact our support team.
                           </div>
                         </div>
                       )}
@@ -1042,7 +1178,6 @@ export default function Dashboard() {
           </div>
         </DialogContent>
       </Dialog>
-
       <Dialog
         open={activeDialog === "verification"}
         onOpenChange={() =>
@@ -1096,7 +1231,6 @@ export default function Dashboard() {
           </div>
         </DialogContent>
       </Dialog>
-
       <Dialog
         open={activeDialog === "checking"}
         onOpenChange={() => activeDialog === "checking" && handleCloseDialog()}
@@ -1142,7 +1276,6 @@ export default function Dashboard() {
           </div>
         </DialogContent>
       </Dialog>
-
       <Dialog
         open={activeDialog === "registration"}
         onOpenChange={() =>
@@ -1194,18 +1327,6 @@ export default function Dashboard() {
                   value={deviceId}
                   onChange={(e) => setDeviceId(e.target.value)}
                   placeholder="Enter the device ID to register"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="reg-privateKey">Private Key</Label>
-                <Input
-                  id="reg-privateKey"
-                  value={privateKey}
-                  onChange={(e) => setPrivateKey(e.target.value)}
-                  placeholder="Enter your private key"
-                  type="password"
                   required
                 />
               </div>
