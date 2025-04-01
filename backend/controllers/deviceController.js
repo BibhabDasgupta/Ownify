@@ -191,9 +191,9 @@ export const getDeviceStats = async (req,res) => {
 
 export const downloadDevicePDF = async (req, res) => {
   const userDid = req.query.userDid || req.user.did;
-  console.log("Fetching devices for DID:", userDid);
+  //console.log("Fetching devices for DID:", userDid);
   const { deviceId } = req.params;
-  console.log(deviceId);
+ // console.log(deviceId);
 
   try {
     const user = await User.findOne({ did: userDid });
@@ -206,37 +206,84 @@ export const downloadDevicePDF = async (req, res) => {
       return res.status(404).json({ error: "Device not found" });
     }
 
+
+    const hashedDeviceId = ethers.keccak256(ethers.toUtf8Bytes(deviceId));
+    const hashedDID = ethers.keccak256(ethers.toUtf8Bytes(userDid));
+    const messageHash = ethers.solidityPackedKeccak256(
+      ["bytes32", "bytes32"],
+      [hashedDeviceId, hashedDID]
+    );
+    const systemSignature = await systemWallet.signMessage(ethers.getBytes(messageHash));
+
     const downloadTimestamp = new Date().toLocaleString();
-    const systemPublicKey = process.env.SYSTEM_PRIVATE_KEY;
+    const systemPublicKey = process.env.SYSTEM_PUBLIC_KEY;
     // Create PDF
     const doc = new PDFDocument({ size: "A4", margin: 50 });
     res.setHeader("Content-Disposition", `attachment; filename=${device.deviceId}_registration.pdf`);
     res.setHeader("Content-Type", "application/pdf");
     doc.pipe(res);
 
-    doc.fontSize(20).text("Device Registration Certificate", { align: "center" });
+    doc.fontSize(18).text("Device Registration Certificate", { align: "center" });
     doc.moveDown(2);
 
     doc.fontSize(12).text("User Information", { underline: true });
     doc.moveDown(0.5);
-    doc.text(`Name: ${user.name}`);
+    doc.fontSize(10).text(`Name: ${user.name}`);
     doc.text(`Email: ${user.email}`);
     doc.text(`Phone: ${user.phone || "N/A"}`);
     doc.text(`DID: ${user.did}`);
-    doc.moveDown(1.5);
+    doc.moveDown(2);
 
     doc.fontSize(12).text("Device Information", { underline: true });
-    doc.moveDown(0.5);
-    doc.text(`Device Name: ${device.deviceName}`);
+    doc.moveDown(0.3);
+    doc.fontSize(10).text(`Device Name: ${device.deviceName}`);
     doc.text(`Device ID: ${device.deviceId}`);
     doc.text(`Registered At: ${device.registeredAt.toLocaleString()}`);
-    doc.text(`System Public Key: ${systemPublicKey}`);
-    doc.moveDown(1.5);
+    doc.moveDown(2);
 
-    doc.fontSize(12).text("Download Information", { underline: true }); // New section
+    doc.fontSize(12).text("Cryptographic Verification", { underline: true });
+    doc.moveDown(0.3);
+    doc.fontSize(10).text(`System Public Key: ${systemPublicKey}`);
+    doc.text(`Hashed Device ID: ${hashedDeviceId}`);
+    doc.text(`Hashed DID: ${hashedDID}`);
+    doc.text(`Message Hash: ${messageHash}`);
+    doc.text(`Signature: ${systemSignature}`);
+    doc.moveDown(2);
+
+    doc.fontSize(12).text("Verification Instructions", { underline: true });
+    doc.moveDown(0.3);
+    doc.fontSize(10).text("1. Install ethers.js: npm install ethers");
+    doc.text("2. Run this verification code (uses ECDSA with secp256k1 and Keccak-256 hashing):");
     doc.moveDown(0.5);
-    doc.text(`Downloaded At: ${downloadTimestamp}`); // Add download timestamp
-    doc.moveDown(1.5);
+
+    doc.font('Courier').fontSize(8);
+    doc.text(`const { ethers } = require("ethers");\n\n` +
+      `async function verifyDocument() {\n` +
+      `  const publicKey = "${systemPublicKey}";\n` +
+      `  const hashedDeviceId = "${hashedDeviceId}";\n` +
+      `  const hashedDID = "${hashedDID}";\n` +
+      `  const signature = "${systemSignature}";\n\n` +
+      `  // Recreate message hash\n` +
+      `  const messageHash = ethers.solidityPackedKeccak256(\n` +
+      `    ["bytes32", "bytes32"],\n` +
+      `    [hashedDeviceId, hashedDID]\n` +
+      `  );\n\n` +
+      `  // Verify signature\n` +
+      `  const recoveredAddress = ethers.verifyMessage(\n` +
+      `    ethers.getBytes(messageHash),\n` +
+      `    signature\n` +
+      `  );\n\n` +
+      `  console.log(\n` +
+      `    "Verification Result:",\n` +
+      `    recoveredAddress.toLowerCase() === publicKey.toLowerCase()\n` +
+      `      ? "VALID (Genuine document)"\n` +
+      `      : "INVALID (Tampered document)"\n` +
+      `  );\n` +
+      `}\n\n` +
+      `verifyDocument();`);
+    doc.font('Helvetica').fontSize(10);
+
+    doc.moveDown(6);
 
     doc.fontSize(10).text(
       "This certificate verifies that the above device is genuinely registered by the user listed.",
