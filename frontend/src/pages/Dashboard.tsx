@@ -7,6 +7,8 @@ import {
   X,
   MessageCircle,
   Activity,
+  Camera,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Resizable } from "re-resizable";
@@ -33,7 +35,7 @@ import { toast } from "sonner";
 // import { ethers } from "ethers";
 import * as ethers from "ethers";
 import detectEthereumProvider from "@metamask/detect-provider";
-
+import BarcodeScannerComponent from "react-qr-barcode-scanner";
 // Define MetaMask provider type (EIP-1193 compatible)
 interface MetaMaskProvider {
   request: (args: { method: string; params?: any[] }) => Promise<any>;
@@ -132,6 +134,7 @@ export default function Dashboard() {
   const [verifyDeviceId, setVerifyDeviceId] = useState("");
   const [verifyUserDid, setVerifyUserDid] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showScanner, setShowScanner] = useState(false);
   const [checkResult, setCheckResult] = useState<{
     isRegistered: boolean;
     user?: { name: string; email: string; did: string };
@@ -170,6 +173,18 @@ export default function Dashboard() {
       fetchMessages(); // Add this line
     }
   }, [navigate]);
+
+  const scannerStyles = {
+    scannerContainer: {
+      width: "100%",
+      maxWidth: "320px",
+      margin: "0 auto",
+      border: "2px solid #10b981",
+      borderRadius: "8px",
+      overflow: "hidden",
+      backgroundColor: "#f0f0f0",
+    },
+  };
 
   const handleOpenVerification = () => setActiveDialog("verification");
   const handleOpenChecking = () => setActiveDialog("checking");
@@ -238,6 +253,34 @@ export default function Dashboard() {
       return did.toLowerCase();
     }
     return null;
+  };
+
+  const startBarcodeScanner = () => {
+    setShowScanner(true);
+    setDeviceId(""); // Clear previous scan
+  };
+
+  const stopScanner = () => {
+    setShowScanner(false);
+  };
+
+  const resetDeviceId = () => {
+    setDeviceId("");
+    stopScanner();
+  };
+
+  const handleBarcodeScan = (err: any, result: any) => {
+    if (result) {
+      setDeviceId(result.text);
+      toast({
+        title: "Scan Successful",
+        description: `Barcode detected: ${result.text}`,
+        duration: 2000,
+      });
+      stopScanner(); // Stop scanner after successful scan
+    } else if (err && err.name !== "NotFoundException") {
+      console.warn("Scan error:", err);
+    }
   };
 
   const handleOpenRegistration = () => {
@@ -1278,9 +1321,12 @@ export default function Dashboard() {
       </Dialog>
       <Dialog
         open={activeDialog === "registration"}
-        onOpenChange={() =>
-          activeDialog === "registration" && handleCloseDialog()
-        }
+        onOpenChange={(open) => {
+          if (!open) {
+            handleCloseDialog();
+            stopScanner();
+          }
+        }}
       >
         <DialogContent className="max-w-md">
           <DialogTitle className="sr-only">Register New Device</DialogTitle>
@@ -1288,7 +1334,10 @@ export default function Dashboard() {
             variant="ghost"
             size="icon"
             className="absolute right-4 top-4"
-            onClick={handleCloseDialog}
+            onClick={() => {
+              handleCloseDialog();
+              stopScanner();
+            }}
           >
             <X className="h-4 w-4" />
           </Button>
@@ -1321,15 +1370,63 @@ export default function Dashboard() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="reg-deviceId">Device ID</Label>
-                <Input
-                  id="reg-deviceId"
-                  value={deviceId}
-                  onChange={(e) => setDeviceId(e.target.value)}
-                  placeholder="Enter the device ID to register"
-                  required
-                />
-              </div>
+                  <Label htmlFor="reg-deviceId">Device ID</Label>
+                  <div className="relative">
+                    <Input
+                      id="reg-deviceId"
+                      value={deviceId}
+                      readOnly
+                      placeholder="Scan device barcode to get ID"
+                      required
+                    />
+                    <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex gap-1">
+                      {!deviceId ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-8 px-3"
+                          onClick={startBarcodeScanner}
+                        >
+                          <Camera className="h-4 w-4 mr-2" />
+                          Scan Barcode
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={resetDeviceId}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={startBarcodeScanner}
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {showScanner && (
+                  <div className="mt-4 space-y-2" style={scannerStyles.scannerContainer}>
+                    <BarcodeScannerComponent
+                      width={300}
+                      height={300}
+                      onUpdate={handleBarcodeScan}
+                    />
+                    <Button variant="outline" className="w-full" onClick={stopScanner}>
+                      Cancel
+                    </Button>
+                  </div>
+                )}
 
               <div className="pt-2">
                 <Button type="submit" className="w-full">
