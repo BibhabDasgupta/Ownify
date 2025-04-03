@@ -48,7 +48,7 @@ export const checkAndNotify = async (req, res) => {
     }
 
     // Prepare notification message
-    const messageContent = `A new registration attempt was made for your device (ID: ${deviceId}).\n\nAttempted by DID: ${newUserDid}\n\nContact support team for more information.`;    // Save message to original user's database
+    const messageContent = `A re-register attempt was made for your device (ID: ${deviceId}).\n\nAttempted by DID: ${newUserDid}\n\nContact support team for more information.`;    // Save message to original user's database
     originalUser.messages.push({ content: messageContent });
     await originalUser.save();
    // console.log("Hello1");

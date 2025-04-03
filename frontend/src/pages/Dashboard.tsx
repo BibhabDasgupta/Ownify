@@ -147,6 +147,7 @@ export default function Dashboard() {
   } | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  
   const resizableHandleStyle = {
     width: "4px",
     height: "100%",
@@ -274,7 +275,7 @@ export default function Dashboard() {
       setDeviceId(result.text);
       toast({
         title: "Scan Successful",
-        description: `Barcode detected: ${result.text}`,
+        description: `Code detected: ${result.text}`,
         duration: 2000,
       });
       stopScanner(); // Stop scanner after successful scan
@@ -1067,8 +1068,7 @@ export default function Dashboard() {
         </Sheet>
       </main>
       <Footer />
-      // Add this Dialog component near your other Dialogs in the JSX return
-      statement
+      
       <Dialog
         open={registrationSuccess.show}
         onOpenChange={(open) =>
@@ -1375,8 +1375,8 @@ export default function Dashboard() {
                     <Input
                       id="reg-deviceId"
                       value={deviceId}
-                      readOnly
-                      placeholder="Scan device barcode to get ID"
+                      onChange={(e) => setDeviceId(e.target.value)}
+                      placeholder="Enter device ID manually or scan"
                       required
                     />
                     <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex gap-1">
@@ -1388,7 +1388,7 @@ export default function Dashboard() {
                           onClick={startBarcodeScanner}
                         >
                           <Camera className="h-4 w-4 mr-2" />
-                          Scan Barcode
+                          Scan Code
                         </Button>
                       ) : (
                         <>
