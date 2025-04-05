@@ -11,9 +11,12 @@ contract DeviceRegistry {
         bytes systemSignature;
         address registeredBy;
         uint256 timestamp;
+        bool isRevoked;
     }
 
     event DeviceRegistered(bytes32 indexed hashedDeviceId, bytes32 hashedDID, address indexed registeredBy);
+    event DeviceRevoked(bytes32 indexed hashedDeviceId, address indexed registeredBy);
+    event DeviceRevocationRemoved(bytes32 indexed hashedDeviceId, address indexed registeredBy);
 
     function registerDevice(
         bytes32 hashedDeviceId,
@@ -28,10 +31,31 @@ contract DeviceRegistry {
             userSignature: userSignature,
             systemSignature: systemSignature,
             registeredBy: msg.sender,
-            timestamp: block.timestamp
+            timestamp: block.timestamp,
+            isRevoked: false
         });
 
         emit DeviceRegistered(hashedDeviceId, hashedDID, msg.sender);
+    }
+
+    function revokeDevice(bytes32 hashedDeviceId) public {
+        Registration storage reg = registrations[hashedDeviceId];
+        require(reg.hashedDID != bytes32(0), "Device not registered");
+        require(reg.registeredBy == msg.sender, "Only owner can revoke");
+        require(!reg.isRevoked, "Device already revoked");
+
+        reg.isRevoked = true;
+        emit DeviceRevoked(hashedDeviceId, msg.sender);
+    }
+
+    function removeRevocation(bytes32 hashedDeviceId) public {
+        Registration storage reg = registrations[hashedDeviceId];
+        require(reg.hashedDID != bytes32(0), "Device not registered");
+        require(reg.registeredBy == msg.sender, "Only owner can remove revocation");
+        require(reg.isRevoked, "Device not revoked");
+
+        reg.isRevoked = false;
+        emit DeviceRevocationRemoved(hashedDeviceId, msg.sender);
     }
 
 
@@ -43,11 +67,12 @@ contract DeviceRegistry {
             bytes memory userSignature,
             bytes memory systemSignature,
             address registeredBy,
-            uint256 timestamp
+            uint256 timestamp,
+            bool isRevoked
         )
     {
         Registration memory reg = registrations[hashedDeviceId];
-        return (reg.hashedDID, reg.userSignature, reg.systemSignature, reg.registeredBy, reg.timestamp);
+        return (reg.hashedDID, reg.userSignature, reg.systemSignature, reg.registeredBy, reg.timestamp, reg.isRevoked);
     }
 
     

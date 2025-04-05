@@ -41,75 +41,213 @@ interface MetaMaskProvider {
   request: (args: { method: string; params?: any[] }) => Promise<any>;
 }
 
-const contractAddress = "0x88346Ba7902f2C287304Ec86dfFA6909563Bf56B";
+const contractAddress = "0x885d93142535329562ef65bB77C2BBf11Dd32419";
 const contractABI = [
   {
     inputs: [
-      {
-        internalType: "bytes32",
-        name: "hashedDeviceId",
-        type: "bytes32",
-      },
-      {
-        internalType: "bytes32",
-        name: "hashedDID",
-        type: "bytes32",
-      },
-      {
-        internalType: "bytes",
-        name: "userSignature",
-        type: "bytes",
-      },
-      {
-        internalType: "bytes",
-        name: "systemSignature",
-        type: "bytes",
-      },
-    ],
-    name: "registerDevice",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "bytes32",
-        name: "hashedDeviceId",
-        type: "bytes32",
-      },
-    ],
-    name: "getRegistration",
-    outputs: [
-      {
-        internalType: "bytes32",
-        name: "hashedDID",
-        type: "bytes32",
-      },
-      {
-        internalType: "bytes",
-        name: "userSignature",
-        type: "bytes",
-      },
-      {
-        internalType: "bytes",
-        name: "systemSignature",
-        type: "bytes",
-      },
-      {
-        internalType: "address",
-        name: "registeredBy",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "timestamp",
-        type: "uint256",
-      },
-    ],
+        {
+          indexed: true,
+          internalType: "bytes32",
+          name: "hashedDeviceId",
+          type: "bytes32"
+        },
+        {
+          indexed: false,
+          internalType: "bytes32",
+          name: "hashedDID",
+          type: "bytes32"
+        },
+        {
+          indexed: true,
+          internalType: "address",
+          name: "registeredBy",
+          type: "address"
+        }
+      ],
+      name: "DeviceRegistered",
+      type: "event"
+    },
+    {
+      anonymous: false,
+      inputs: [
+        {
+          indexed: true,
+          internalType: "bytes32",
+          name: "hashedDeviceId",
+          type: "bytes32"
+        },
+        {
+          indexed: true,
+          internalType: "address",
+          name: "registeredBy",
+          type: "address"
+        }
+      ],
+      name: "DeviceRevocationRemoved",
+      type: "event"
+    },
+    {
+      anonymous: false,
+      inputs: [
+        {
+          indexed: true,
+          internalType: "bytes32",
+          name: "hashedDeviceId",
+          type: "bytes32"
+        },
+        {
+          indexed: true,
+          internalType: "address",
+          name: "registeredBy",
+          type: "address"
+        }
+      ],
+      name: "DeviceRevoked",
+      type: "event"
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32",
+          name: "",
+          type: "bytes32"
+        }
+      ],
+      name: "registrations",
+      outputs: [
+        {
+          internalType: "bytes32",
+          name: "hashedDID",
+          type: "bytes32"
+        },
+        {
+          internalType: "bytes",
+          name: "userSignature",
+          type: "bytes"
+        },
+        {
+          internalType: "bytes",
+          name: "systemSignature",
+          type: "bytes"
+        },
+        {
+          internalType: "address",
+          name: "registeredBy",
+          type: "address"
+        },
+        {
+          internalType: "uint256",
+          name: "timestamp",
+          type: "uint256"
+        },
+        {
+          internalType: "bool",
+          name: "isRevoked",
+          type: "bool"
+        }
+      ],
+      stateMutability: "view",
+      type: "function",
+      constant: true
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32",
+          name: "hashedDeviceId",
+          type: "bytes32"
+        },
+        {
+          internalType: "bytes32",
+          name: "hashedDID",
+          type: "bytes32"
+        },
+        {
+          internalType: "bytes",
+          name: "userSignature",
+          type: "bytes"
+        },
+        {
+          internalType: "bytes",
+          name: "systemSignature",
+          type: "bytes"
+        }
+      ],
+      name: "registerDevice",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function"
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32",
+          name: "hashedDeviceId",
+          type: "bytes32"
+        }
+      ],
+      name: "revokeDevice",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function"
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32",
+          name: "hashedDeviceId",
+          type: "bytes32"
+        }
+      ],
+      name: "removeRevocation",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function"
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32",
+          name: "hashedDeviceId",
+          type: "bytes32"
+        }
+      ],
+      name: "getRegistration",
+      outputs: [
+        {
+          internalType: "bytes32",
+          name: "hashedDID",
+          type: "bytes32"
+        },
+        {
+          internalType: "bytes",
+          name: "userSignature",
+          type: "bytes"
+        },
+        {
+          internalType: "bytes",
+          name: "systemSignature",
+          type: "bytes"
+        },
+        {
+          internalType: "address",
+          name: "registeredBy",
+          type: "address"
+        },
+        {
+          internalType: "uint256",
+          name: "timestamp",
+          type: "uint256"
+        },
+        {
+          internalType: "bool",
+          name: "isRevoked",
+          type: "bool"
+        }
+      ],
     stateMutability: "view",
-    type: "function",
-    constant: true,
+      type: "function",
+      constant: true
   },
 ];
 
@@ -411,10 +549,18 @@ export default function Dashboard() {
         signer
       );
 
-      const [existingHashedDID, , , registeredBy, timestamp] =
+      const [existingHashedDID, , , registeredBy, timestamp,isRevoked] =
         await contract.getRegistration(hashedDeviceId);
 
       if (existingHashedDID !== ethers.ZeroHash) {
+        if (isRevoked) {
+          toast({
+            title: "Device Revoked",
+            description: "This device is revoked. Please remove revocation to register again.",
+            variant: "destructive",
+          });
+          return;
+        }
         if (registeredBy.toLowerCase() === metaMaskAddress.toLowerCase()) {
           toast({
             title: "Device Already Registered",
@@ -550,6 +696,7 @@ export default function Dashboard() {
         systemSignature,
         registeredBy,
         timestamp,
+        isRevoked,
       ] = await contract.getRegistration(hashedDeviceId);
 
       if (hashedDID === ethers.ZeroHash) {
@@ -557,6 +704,15 @@ export default function Dashboard() {
           isRegistered: false,
         });
         setActiveDialog("result");
+        return;
+      }
+
+      if (isRevoked) {
+        toast({
+          title: "Device Revoked",
+          description: "This device has been revoked by its owner.",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -727,7 +883,7 @@ export default function Dashboard() {
       const providedHashedDID = ethers.keccak256(
         ethers.toUtf8Bytes(verifyUserDid.toLowerCase())
       );
-      const [hashedDID, userSignature, systemSignature, registeredBy] =
+      const [hashedDID, userSignature, systemSignature, registeredBy, ,isRevoked] =
         await contract.getRegistration(hashedDeviceId);
 
       // console.log("Verification - verifyDeviceId:", verifyDeviceId);
@@ -744,6 +900,15 @@ export default function Dashboard() {
           message: "Device ID does not exist on the blockchain.",
         });
         setActiveDialog("verifyResult");
+        return;
+      }
+
+      if (isRevoked) {
+        toast({
+          title: "Device Revoked",
+          description: "This device has been revoked by its owner.",
+          variant: "destructive",
+        });
         return;
       }
 

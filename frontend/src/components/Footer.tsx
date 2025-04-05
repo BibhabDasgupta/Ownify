@@ -1,15 +1,236 @@
 
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/components/ui/use-toast";
+import * as ethers from "ethers";
+import detectEthereumProvider from "@metamask/detect-provider";
+import { X } from "lucide-react";
+
+interface MetaMaskProvider {
+  request: (args: { method: string; params?: any[] }) => Promise<any>;
+}
+
+
+const contractAddress = "0x885d93142535329562ef65bB77C2BBf11Dd32419";
+const contractABI = [
+  {
+    inputs: [
+        {
+          indexed: true,
+          internalType: "bytes32",
+          name: "hashedDeviceId",
+          type: "bytes32"
+        },
+        {
+          indexed: false,
+          internalType: "bytes32",
+          name: "hashedDID",
+          type: "bytes32"
+        },
+        {
+          indexed: true,
+          internalType: "address",
+          name: "registeredBy",
+          type: "address"
+        }
+      ],
+      name: "DeviceRegistered",
+      type: "event"
+    },
+    {
+      anonymous: false,
+      inputs: [
+        {
+          indexed: true,
+          internalType: "bytes32",
+          name: "hashedDeviceId",
+          type: "bytes32"
+        },
+        {
+          indexed: true,
+          internalType: "address",
+          name: "registeredBy",
+          type: "address"
+        }
+      ],
+      name: "DeviceRevocationRemoved",
+      type: "event"
+    },
+    {
+      anonymous: false,
+      inputs: [
+        {
+          indexed: true,
+          internalType: "bytes32",
+          name: "hashedDeviceId",
+          type: "bytes32"
+        },
+        {
+          indexed: true,
+          internalType: "address",
+          name: "registeredBy",
+          type: "address"
+        }
+      ],
+      name: "DeviceRevoked",
+      type: "event"
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32",
+          name: "",
+          type: "bytes32"
+        }
+      ],
+      name: "registrations",
+      outputs: [
+        {
+          internalType: "bytes32",
+          name: "hashedDID",
+          type: "bytes32"
+        },
+        {
+          internalType: "bytes",
+          name: "userSignature",
+          type: "bytes"
+        },
+        {
+          internalType: "bytes",
+          name: "systemSignature",
+          type: "bytes"
+        },
+        {
+          internalType: "address",
+          name: "registeredBy",
+          type: "address"
+        },
+        {
+          internalType: "uint256",
+          name: "timestamp",
+          type: "uint256"
+        },
+        {
+          internalType: "bool",
+          name: "isRevoked",
+          type: "bool"
+        }
+      ],
+      stateMutability: "view",
+      type: "function",
+      constant: true
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32",
+          name: "hashedDeviceId",
+          type: "bytes32"
+        },
+        {
+          internalType: "bytes32",
+          name: "hashedDID",
+          type: "bytes32"
+        },
+        {
+          internalType: "bytes",
+          name: "userSignature",
+          type: "bytes"
+        },
+        {
+          internalType: "bytes",
+          name: "systemSignature",
+          type: "bytes"
+        }
+      ],
+      name: "registerDevice",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function"
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32",
+          name: "hashedDeviceId",
+          type: "bytes32"
+        }
+      ],
+      name: "revokeDevice",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function"
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32",
+          name: "hashedDeviceId",
+          type: "bytes32"
+        }
+      ],
+      name: "removeRevocation",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function"
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32",
+          name: "hashedDeviceId",
+          type: "bytes32"
+        }
+      ],
+      name: "getRegistration",
+      outputs: [
+        {
+          internalType: "bytes32",
+          name: "hashedDID",
+          type: "bytes32"
+        },
+        {
+          internalType: "bytes",
+          name: "userSignature",
+          type: "bytes"
+        },
+        {
+          internalType: "bytes",
+          name: "systemSignature",
+          type: "bytes"
+        },
+        {
+          internalType: "address",
+          name: "registeredBy",
+          type: "address"
+        },
+        {
+          internalType: "uint256",
+          name: "timestamp",
+          type: "uint256"
+        },
+        {
+          internalType: "bool",
+          name: "isRevoked",
+          type: "bool"
+        }
+      ],
+    stateMutability: "view",
+      type: "function",
+      constant: true
+  },
+];
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
   const [isContactOpen, setIsContactOpen] = useState(false);
+  const [isRevokeOpen, setIsRevokeOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -17,8 +238,100 @@ export default function Footer() {
     reason: "",
     message: ""
   });
+  const [revokeData, setRevokeData] = useState({ did: "", deviceId: "" });
+  const [devices, setDevices] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const isLoggedIn = () => !!localStorage.getItem("user-token");
+  const getUserDid = () => localStorage.getItem("user-did") || "";
+
+  useEffect(() => {
+    if (isLoggedIn() && isRevokeOpen) {
+      fetchDevices();
+      setRevokeData(prev => ({ ...prev, did: getUserDid() }));
+    }
+  }, [isRevokeOpen]);
+
+  const fetchDevices = async () => {
+    try {
+      const token = localStorage.getItem("user-token");
+      const userDid = getUserDid();
+      const response = await fetch(`http://localhost:5000/api/device/devices?did=${userDid}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to fetch devices");
+      setDevices(data);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRevokeAction = async (action) => {
+    try {
+      const provider =  (await detectEthereumProvider()) as MetaMaskProvider | null;
+      if (!provider) throw new Error("MetaMask not detected");
+
+      await provider.request({ method: "eth_requestAccounts" });
+      const ethersProvider = new ethers.BrowserProvider(provider);
+      const signer = await ethersProvider.getSigner();
+      const contract = new ethers.Contract(contractAddress, contractABI, signer);
+
+      const hashedDeviceId = ethers.keccak256(ethers.toUtf8Bytes(revokeData.deviceId));
+      const [hashedDID, , , , , isRevoked] = await contract.getRegistration(hashedDeviceId);
+
+      if (hashedDID === ethers.ZeroHash) {
+        toast({
+          title: "Error",
+          description: "Device not registered on the blockchain.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (action === "revoke") {
+        if (isRevoked) {
+          toast({
+            title: "Device Already Revoked",
+            description: "This device has already been revoked.",
+            variant: "destructive",
+          });
+          return;
+        }
+        const tx = await contract.revokeDevice(hashedDeviceId);
+        await tx.wait();
+        toast({ title: "Success", description: "Device revoked successfully" });
+      } else {
+        if (!isRevoked) {
+          toast({
+            title: "No Revocation Found",
+            description: "This device is not revoked, so revocation cannot be removed.",
+            variant: "destructive",
+          });
+          return;
+        }
+        const tx = await contract.removeRevocation(hashedDeviceId);
+        await tx.wait();
+        toast({ title: "Success", description: "Revocation removed successfully" });
+      }
+      setIsRevokeOpen(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -86,9 +399,23 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="#" className="hover:text-foreground transition-colors">
-                  Register Device
-                </Link>
+                <button
+                  onClick={() => {
+                    if (!isLoggedIn()) {
+                      toast({
+                        title: "Login Required",
+                        description: "Please login to revoke a device",
+                        variant: "destructive",
+                      });
+                      navigate("/login");
+                    } else {
+                      setIsRevokeOpen(true);
+                    }
+                  }}
+                  className="hover:text-foreground transition-colors text-left w-full"
+                >
+                  Revoke Device
+                </button>
               </li>
               <li>
                 <Link to="#" className="hover:text-foreground transition-colors">
@@ -274,6 +601,85 @@ export default function Footer() {
                 </div>
               </form>
             )}
+          </DialogContent>
+        </Dialog>
+        <Dialog open={isRevokeOpen} onOpenChange={setIsRevokeOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Device Revocation</DialogTitle>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-4 top-4"
+                onClick={() => setIsRevokeOpen(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogHeader>
+            <Tabs defaultValue="revoke" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="revoke">Revoke Device</TabsTrigger>
+                <TabsTrigger value="remove">Remove Revocation</TabsTrigger>
+              </TabsList>
+              <TabsContent value="revoke">
+                <form className="space-y-4 mt-4" onSubmit={(e) => { e.preventDefault(); handleRevokeAction("revoke"); }}>
+                  <div className="space-y-2">
+                    <Label>Your DID</Label>
+                    <Input value={revokeData.did} readOnly />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Device ID</Label>
+                    <select
+                      className="w-full p-2 border rounded bg-white text-black"
+                      value={revokeData.deviceId}
+                      onChange={(e) => setRevokeData(prev => ({ ...prev, deviceId: e.target.value }))}
+                      required
+                    >
+                     <option value="" disabled>Select a device</option>
+                      {devices.length > 0 ? (
+                        devices.map(device => (
+                          <option key={device.deviceId} value={device.deviceId}>
+                            {device.deviceName} ({device.deviceId})
+                          </option>
+                        ))
+                      ) : (
+                        <option value="" disabled>No devices available</option>
+                      )}
+                    </select>
+                  </div>
+                  <Button type="submit" className="w-full">Revoke Device</Button>
+                </form>
+              </TabsContent>
+              <TabsContent value="remove">
+                <form className="space-y-4 mt-4" onSubmit={(e) => { e.preventDefault(); handleRevokeAction("remove"); }}>
+                  <div className="space-y-2">
+                    <Label>Your DID</Label>
+                    <Input value={revokeData.did} readOnly />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Device ID</Label>
+                    <select
+                      className="w-full p-2 border rounded bg-white text-black"
+                      value={revokeData.deviceId}
+                      onChange={(e) => setRevokeData(prev => ({ ...prev, deviceId: e.target.value }))}
+                      required
+                    >
+                      <option value="" disabled>Select a device</option>
+                      {devices.length > 0 ? (
+                        devices.map(device => (
+                          <option key={device.deviceId} value={device.deviceId}>
+                            {device.deviceName} ({device.deviceId})
+                          </option>
+                        ))
+                      ) : (
+                        <option value="" disabled>No devices available</option>
+                      )}
+                    </select>
+                  </div>
+                  <Button type="submit" className="w-full">Remove Revocation</Button>
+                </form>
+              </TabsContent>
+            </Tabs>
           </DialogContent>
         </Dialog>
       </div>
