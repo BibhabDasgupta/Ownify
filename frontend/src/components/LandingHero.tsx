@@ -24,7 +24,13 @@ export default function LandingHero() {
   };
   
   const handleInstructions = () => {
-    setIsInstructionsOpen(true);
+    // Create a link element to trigger PDF download
+    const link = document.createElement('a');
+    link.href = '/uploads/ownify-instructions.pdf'; // Path to your PDF in the public/uploads folder
+    link.download = 'ownify-instructions.pdf'; // Filename for the downloaded file
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
   
   return (
@@ -85,7 +91,7 @@ export default function LandingHero() {
       </div>
 
       {/* Instructions Dialog */}
-      <Dialog open={isInstructionsOpen} onOpenChange={setIsInstructionsOpen}>
+      {/* <Dialog open={isInstructionsOpen} onOpenChange={setIsInstructionsOpen}>
         <DialogContent className="max-w-3xl">
           <DialogTitle className="sr-only">Ownify Instructions</DialogTitle>
            <Button 
@@ -142,7 +148,9 @@ export default function LandingHero() {
             </div>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog> */}
     </section>
   );
 }
+
+// frontend\public\uploads\ownify-instructions.pdf

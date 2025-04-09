@@ -45,209 +45,209 @@ const contractAddress = "0x885d93142535329562ef65bB77C2BBf11Dd32419";
 const contractABI = [
   {
     inputs: [
-        {
-          indexed: true,
-          internalType: "bytes32",
-          name: "hashedDeviceId",
-          type: "bytes32"
-        },
-        {
-          indexed: false,
-          internalType: "bytes32",
-          name: "hashedDID",
-          type: "bytes32"
-        },
-        {
-          indexed: true,
-          internalType: "address",
-          name: "registeredBy",
-          type: "address"
-        }
-      ],
-      name: "DeviceRegistered",
-      type: "event"
-    },
-    {
-      anonymous: false,
-      inputs: [
-        {
-          indexed: true,
-          internalType: "bytes32",
-          name: "hashedDeviceId",
-          type: "bytes32"
-        },
-        {
-          indexed: true,
-          internalType: "address",
-          name: "registeredBy",
-          type: "address"
-        }
-      ],
-      name: "DeviceRevocationRemoved",
-      type: "event"
-    },
-    {
-      anonymous: false,
-      inputs: [
-        {
-          indexed: true,
-          internalType: "bytes32",
-          name: "hashedDeviceId",
-          type: "bytes32"
-        },
-        {
-          indexed: true,
-          internalType: "address",
-          name: "registeredBy",
-          type: "address"
-        }
-      ],
-      name: "DeviceRevoked",
-      type: "event"
-    },
-    {
-      inputs: [
-        {
-          internalType: "bytes32",
-          name: "",
-          type: "bytes32"
-        }
-      ],
-      name: "registrations",
-      outputs: [
-        {
-          internalType: "bytes32",
-          name: "hashedDID",
-          type: "bytes32"
-        },
-        {
-          internalType: "bytes",
-          name: "userSignature",
-          type: "bytes"
-        },
-        {
-          internalType: "bytes",
-          name: "systemSignature",
-          type: "bytes"
-        },
-        {
-          internalType: "address",
-          name: "registeredBy",
-          type: "address"
-        },
-        {
-          internalType: "uint256",
-          name: "timestamp",
-          type: "uint256"
-        },
-        {
-          internalType: "bool",
-          name: "isRevoked",
-          type: "bool"
-        }
-      ],
-      stateMutability: "view",
-      type: "function",
-      constant: true
-    },
-    {
-      inputs: [
-        {
-          internalType: "bytes32",
-          name: "hashedDeviceId",
-          type: "bytes32"
-        },
-        {
-          internalType: "bytes32",
-          name: "hashedDID",
-          type: "bytes32"
-        },
-        {
-          internalType: "bytes",
-          name: "userSignature",
-          type: "bytes"
-        },
-        {
-          internalType: "bytes",
-          name: "systemSignature",
-          type: "bytes"
-        }
-      ],
-      name: "registerDevice",
-      outputs: [],
-      stateMutability: "nonpayable",
-      type: "function"
-    },
-    {
-      inputs: [
-        {
-          internalType: "bytes32",
-          name: "hashedDeviceId",
-          type: "bytes32"
-        }
-      ],
-      name: "revokeDevice",
-      outputs: [],
-      stateMutability: "nonpayable",
-      type: "function"
-    },
-    {
-      inputs: [
-        {
-          internalType: "bytes32",
-          name: "hashedDeviceId",
-          type: "bytes32"
-        }
-      ],
-      name: "removeRevocation",
-      outputs: [],
-      stateMutability: "nonpayable",
-      type: "function"
-    },
-    {
-      inputs: [
-        {
-          internalType: "bytes32",
-          name: "hashedDeviceId",
-          type: "bytes32"
-        }
-      ],
-      name: "getRegistration",
-      outputs: [
-        {
-          internalType: "bytes32",
-          name: "hashedDID",
-          type: "bytes32"
-        },
-        {
-          internalType: "bytes",
-          name: "userSignature",
-          type: "bytes"
-        },
-        {
-          internalType: "bytes",
-          name: "systemSignature",
-          type: "bytes"
-        },
-        {
-          internalType: "address",
-          name: "registeredBy",
-          type: "address"
-        },
-        {
-          internalType: "uint256",
-          name: "timestamp",
-          type: "uint256"
-        },
-        {
-          internalType: "bool",
-          name: "isRevoked",
-          type: "bool"
-        }
-      ],
+      {
+        indexed: true,
+        internalType: "bytes32",
+        name: "hashedDeviceId",
+        type: "bytes32",
+      },
+      {
+        indexed: false,
+        internalType: "bytes32",
+        name: "hashedDID",
+        type: "bytes32",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "registeredBy",
+        type: "address",
+      },
+    ],
+    name: "DeviceRegistered",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "bytes32",
+        name: "hashedDeviceId",
+        type: "bytes32",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "registeredBy",
+        type: "address",
+      },
+    ],
+    name: "DeviceRevocationRemoved",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "bytes32",
+        name: "hashedDeviceId",
+        type: "bytes32",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "registeredBy",
+        type: "address",
+      },
+    ],
+    name: "DeviceRevoked",
+    type: "event",
+  },
+  {
+    inputs: [
+      {
+        internalType: "bytes32",
+        name: "",
+        type: "bytes32",
+      },
+    ],
+    name: "registrations",
+    outputs: [
+      {
+        internalType: "bytes32",
+        name: "hashedDID",
+        type: "bytes32",
+      },
+      {
+        internalType: "bytes",
+        name: "userSignature",
+        type: "bytes",
+      },
+      {
+        internalType: "bytes",
+        name: "systemSignature",
+        type: "bytes",
+      },
+      {
+        internalType: "address",
+        name: "registeredBy",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "timestamp",
+        type: "uint256",
+      },
+      {
+        internalType: "bool",
+        name: "isRevoked",
+        type: "bool",
+      },
+    ],
     stateMutability: "view",
-      type: "function",
-      constant: true
+    type: "function",
+    constant: true,
+  },
+  {
+    inputs: [
+      {
+        internalType: "bytes32",
+        name: "hashedDeviceId",
+        type: "bytes32",
+      },
+      {
+        internalType: "bytes32",
+        name: "hashedDID",
+        type: "bytes32",
+      },
+      {
+        internalType: "bytes",
+        name: "userSignature",
+        type: "bytes",
+      },
+      {
+        internalType: "bytes",
+        name: "systemSignature",
+        type: "bytes",
+      },
+    ],
+    name: "registerDevice",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "bytes32",
+        name: "hashedDeviceId",
+        type: "bytes32",
+      },
+    ],
+    name: "revokeDevice",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "bytes32",
+        name: "hashedDeviceId",
+        type: "bytes32",
+      },
+    ],
+    name: "removeRevocation",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "bytes32",
+        name: "hashedDeviceId",
+        type: "bytes32",
+      },
+    ],
+    name: "getRegistration",
+    outputs: [
+      {
+        internalType: "bytes32",
+        name: "hashedDID",
+        type: "bytes32",
+      },
+      {
+        internalType: "bytes",
+        name: "userSignature",
+        type: "bytes",
+      },
+      {
+        internalType: "bytes",
+        name: "systemSignature",
+        type: "bytes",
+      },
+      {
+        internalType: "address",
+        name: "registeredBy",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "timestamp",
+        type: "uint256",
+      },
+      {
+        internalType: "bool",
+        name: "isRevoked",
+        type: "bool",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+    constant: true,
   },
 ];
 
@@ -285,7 +285,7 @@ export default function Dashboard() {
   } | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   const resizableHandleStyle = {
     width: "4px",
     height: "100%",
@@ -549,16 +549,50 @@ export default function Dashboard() {
         signer
       );
 
-      const [existingHashedDID, , , registeredBy, timestamp,isRevoked] =
+      const [existingHashedDID, , , registeredBy, timestamp, isRevoked] =
         await contract.getRegistration(hashedDeviceId);
 
       if (existingHashedDID !== ethers.ZeroHash) {
         if (isRevoked) {
-          toast({
-            title: "Device Revoked",
-            description: "This device is revoked. Please remove revocation to register again.",
-            variant: "destructive",
-          });
+          if (registeredBy.toLowerCase() === metaMaskAddress.toLowerCase()) {
+            toast({
+              title: "Device Revoked",
+              description:
+                "You previously revoked this device. Please unrevoke or use a different device.",
+              variant: "destructive",
+            });
+          } else {
+            // Device revoked by someone else
+            toast({
+              title: "Device Revoked",
+              description:
+                "This device has been revoked by its original owner.",
+              variant: "destructive",
+            });
+
+            // Notify original owner
+            const originalUserDid = `${registeredBy}`;
+            const response = await fetch(
+              "http://localhost:5000/api/device/check-and-notify",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                  deviceId,
+                  originalUserDid,
+                  newUserDid: userDid,
+                }),
+              }
+            );
+
+            const data = await response.json();
+            if (!response.ok) {
+              console.error("Notification failed:", data.error);
+            }
+          }
           return;
         }
         if (registeredBy.toLowerCase() === metaMaskAddress.toLowerCase()) {
@@ -883,8 +917,14 @@ export default function Dashboard() {
       const providedHashedDID = ethers.keccak256(
         ethers.toUtf8Bytes(verifyUserDid.toLowerCase())
       );
-      const [hashedDID, userSignature, systemSignature, registeredBy, ,isRevoked] =
-        await contract.getRegistration(hashedDeviceId);
+      const [
+        hashedDID,
+        userSignature,
+        systemSignature,
+        registeredBy,
+        ,
+        isRevoked,
+      ] = await contract.getRegistration(hashedDeviceId);
 
       // console.log("Verification - verifyDeviceId:", verifyDeviceId);
       // console.log("Verification - hashedDeviceId:", hashedDeviceId);
@@ -1233,7 +1273,7 @@ export default function Dashboard() {
         </Sheet>
       </main>
       <Footer />
-      
+
       <Dialog
         open={registrationSuccess.show}
         onOpenChange={(open) =>
@@ -1535,63 +1575,70 @@ export default function Dashboard() {
               </div>
 
               <div className="space-y-2">
-                  <Label htmlFor="reg-deviceId">Device ID</Label>
-                  <div className="relative">
-                    <Input
-                      id="reg-deviceId"
-                      value={deviceId}
-                      onChange={(e) => setDeviceId(e.target.value)}
-                      placeholder="Enter device ID manually or scan"
-                      required
-                    />
-                    <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex gap-1">
-                      {!deviceId ? (
+                <Label htmlFor="reg-deviceId">Device ID</Label>
+                <div className="relative">
+                  <Input
+                    id="reg-deviceId"
+                    value={deviceId}
+                    onChange={(e) => setDeviceId(e.target.value)}
+                    placeholder="Enter device ID manually or scan"
+                    required
+                  />
+                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex gap-1">
+                    {!deviceId ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-8 px-3"
+                        onClick={startBarcodeScanner}
+                      >
+                        <Camera className="h-4 w-4 mr-2" />
+                        Scan Code
+                      </Button>
+                    ) : (
+                      <>
                         <Button
                           type="button"
                           variant="outline"
-                          className="h-8 px-3"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={resetDeviceId}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
                           onClick={startBarcodeScanner}
                         >
-                          <Camera className="h-4 w-4 mr-2" />
-                          Scan Code
+                          <RefreshCw className="h-4 w-4" />
                         </Button>
-                      ) : (
-                        <>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={resetDeviceId}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={startBarcodeScanner}
-                          >
-                            <RefreshCw className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
+                      </>
+                    )}
                   </div>
                 </div>
-                {showScanner && (
-                  <div className="mt-4 space-y-2" style={scannerStyles.scannerContainer}>
-                    <BarcodeScannerComponent
-                      width={300}
-                      height={300}
-                      onUpdate={handleBarcodeScan}
-                    />
-                    <Button variant="outline" className="w-full" onClick={stopScanner}>
-                      Cancel
-                    </Button>
-                  </div>
-                )}
+              </div>
+              {showScanner && (
+                <div
+                  className="mt-4 space-y-2"
+                  style={scannerStyles.scannerContainer}
+                >
+                  <BarcodeScannerComponent
+                    width={300}
+                    height={300}
+                    onUpdate={handleBarcodeScan}
+                  />
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={stopScanner}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              )}
 
               <div className="pt-2">
                 <Button type="submit" className="w-full">
