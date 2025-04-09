@@ -508,6 +508,7 @@ export default function Dashboard() {
 
   const handleRegisterDevice = async (e: React.FormEvent) => {
     e.preventDefault();
+    const startTime = performance.now();
     try {
       const token = localStorage.getItem("user-token");
       console.log("Token being sent:", token);
@@ -688,7 +689,25 @@ export default function Dashboard() {
         data.systemSignature,
         { gasLimit: 300000 }
       );
-      await tx.wait();
+      let receipt;
+      try {
+        receipt = await tx.wait();
+        console.log("Transaction confirmed. Receipt:", receipt);
+      } catch (waitError) {
+        throw new Error(`Transaction failed: ${waitError.message}`);
+      }
+  
+      if (!receipt || !receipt.gasUsed || !receipt.gasPrice) {
+        throw new Error("Invalid transaction receipt: missing gasUsed or effectiveGasPrice");
+      }
+  
+      const endTime = performance.now(); // End timing
+      const executionTime = (endTime - startTime) / 1000; // Convert to seconds
+      const gasUsed = receipt.gasUsed.toString();
+      const gasCostWei = ethers.formatEther(BigInt(gasUsed) * BigInt(receipt.gasPrice.toString()));
+      console.log(`Registration Time: ${executionTime.toFixed(2)} seconds`);
+      console.log(`Registration Gas Used: ${gasUsed} units`);
+      console.log(`Registration Gas Cost: ${gasCostWei} ETH`);
 
       setRegistrationSuccess({
         show: true,
@@ -707,6 +726,7 @@ export default function Dashboard() {
 
   const handleCheckDevice = async (e: React.FormEvent) => {
     e.preventDefault();
+    const startTime = performance.now();
     try {
       const provider =
         (await detectEthereumProvider()) as MetaMaskProvider | null;
@@ -805,6 +825,11 @@ export default function Dashboard() {
         });
       }
 
+      const endTime = performance.now(); // End timing (no blockchain write, so no tx.wait)
+      const executionTime = (endTime - startTime) / 1000;
+      console.log(`Checking Time: ${executionTime.toFixed(2)} seconds`);
+      console.log(`Checking Gas Cost: 0 ETH (read-only operation)`);
+
       setActiveDialog("result");
     } catch (error) {
       toast({
@@ -896,6 +921,7 @@ export default function Dashboard() {
 
   const handleVerifyDevice = async (e: React.FormEvent) => {
     e.preventDefault();
+    const startTime = performance.now();
     try {
       const provider =
         (await detectEthereumProvider()) as MetaMaskProvider | null;
@@ -1015,12 +1041,17 @@ export default function Dashboard() {
         return;
       }
 
+      const endTime = performance.now(); // End timing (no blockchain write)
+      const executionTime = (endTime - startTime) / 1000;
+      console.log(`Verification Time: ${executionTime.toFixed(2)} seconds`);
+      console.log(`Verification Gas Cost: 0 ETH (read-only operation)`);
       // All checks passed
       setVerifyResult({
         isValid: true,
         message:
           "Correct: Device ID is mapped to your DID and signatures are valid.",
       });
+
       setActiveDialog("verifyResult");
     } catch (error) {
       toast({
