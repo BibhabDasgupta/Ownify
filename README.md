@@ -29,7 +29,7 @@ A blockchain-powered platform for secure device ownership registration, verifica
 - **Event Logging**: Track DeviceRegistered, DeviceRevoked, and DeviceRevocationRemoved events.
 - **Gas-Optimized**: Efficient read/write operations for Polygon network (low-cost transactions).
 
-###📊 User Experience
+### 📊 User Experience
 - **Responsive UI**: Mobile-friendly design with QR/barcode scanning via webcam.
 - **Real-Time Feedback**: Toast notifications for transaction status, errors, and success.
 - **Message Center**: In-app messaging for alerts, with read/delete functionality.
