@@ -125,7 +125,6 @@ System Wallet: Pre-funded wallet for system signatures (SYSTEM_PUBLIC_KEY).
    # or
    npm start    # Production'
    ```
-
    The API will be available at http://localhost:5000.
    
 ### Frontend Setup
@@ -236,10 +235,10 @@ The application will be available at http://localhost:5173.
 - `POST /api/device/delete-message` - Delete message (body {messageId, userDid})
 
 ### Blockchain (Frontend-Only Interactions)
-- **registerDevice(hashedDeviceId, hashedDID, userSig, systemSig)** - On-chain registration
-- **getRegistration(hashedDeviceId)** - Query ownership details
-- **revokeDevice(hashedDeviceId)** - Revoke ownership
-- **removeRevocation(hashedDeviceId)** - Restore revoked device
+- `registerDevice(hashedDeviceId, hashedDID, userSig, systemSig)` - On-chain registration
+- `getRegistration(hashedDeviceId)` - Query ownership details
+- `revokeDevice(hashedDeviceId)` - Revoke ownership
+- `removeRevocation(hashedDeviceId)` - Restore revoked device
 
 ## 🧪 Development
 
@@ -303,7 +302,6 @@ verifyDocument();
 - **Thresholds:** Min profile completeness (name/phone/DID) for registration.
 
 ### 🤝 Contributing
-
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/decentralized-transfer`)
 3. Commit changes (`git commit -m 'Add device transfer functionality'`)
@@ -311,7 +309,6 @@ verifyDocument();
 5. Open a Pull Request
 
 ## 🆘 Support
-
 For support and questions:
 - **Issues:** GitHub Issues tracker
 - **Documentation:** `/docs` folder (add API docs with Swagger)
@@ -319,7 +316,6 @@ For support and questions:
 - **Discord/Slack:** [Link to community] (setup if needed)
 
 ## 🔮 Future Enhancements
-
 - **Device Transfer Protocol:** On-chain ownership transfer with multi-sig approval.
 - **Dispute Resolution:** Oracle integration (Chainlink) for IMEI validation.
 - **Multi-Chain Support:** Ethereum L2s (Optimism/Base) alongside Polygon.
